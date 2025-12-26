@@ -19,12 +19,11 @@ def load_data(filepath):
     # Common column names in phishing datasets: 'url', 'phishing', 'status', 'label'
     
     # Example for typical datasets:
+    # Updated Logic: Treat 'benign' as 0, everything else (phishing, defacement, malware) as 1
     if 'status' in df.columns:
-        # Assuming 'phishing' is the positive class. Adjust mapping.
-        # e.g., dataset might use 'phishing'/'legitimate' strings
-        df['label'] = df['status'].apply(lambda x: 1 if x == 'phishing' else 0)
+        df['label'] = df['status'].apply(lambda x: 0 if x == 'benign' else 1)
     elif 'type' in df.columns:
-        df['label'] = df['type'].apply(lambda x: 1 if x == 'phishing' else 0)
+        df['label'] = df['type'].apply(lambda x: 0 if x == 'benign' else 1)
     
     return df
 
