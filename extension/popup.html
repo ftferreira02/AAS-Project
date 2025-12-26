@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { width: 300px; padding: 20px; font-family: Arial, sans-serif; text-align: center; }
+        .status { padding: 10px; border-radius: 5px; margin-bottom: 20px; color: white; font-weight: bold; }
+        .safe { background-color: #4caf50; }
+        .phishing { background-color: #f44336; }
+        .details { text-align: left; font-size: 14px; color: #555; }
+        .loading { color: #888; }
+    </style>
+</head>
+<body>
+    <h2>Phishing Detector</h2>
+    <div id="status-box" class="status" style="display:none"></div>
+    <div id="loading" class="loading">Analyzing...</div>
+    
+    <div id="details" class="details" style="display:none">
+        <p><strong>Confidence:</strong> <span id="confidence"></span>%</p>
+        <p><strong>Features:</strong></p>
+        <ul id="features-list" style="padding-left: 20px; font-size: 12px;"></ul>
+    </div>
+
+    <script src="popup.js"></script>
+</body>
+</html>

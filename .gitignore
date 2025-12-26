@@ -11,3 +11,13 @@ desktop.ini
 *.swp
 *.swo
 *~
+venv/
+
+# Python
+__pycache__/
+*.pyc
+
+# ML Artifacts
+ml/data/
+ml/model.pkl
+*.pkl
