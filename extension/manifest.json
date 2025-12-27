@@ -4,11 +4,11 @@
     "version": "1.0",
     "description": "Detects phishing URLs using lexical analysis ML model",
     "permissions": [
-        "activeTab",
-        "scripting"
+        "activeTab"
     ],
     "host_permissions": [
-        "<all_urls>"
+        "http://*/*",
+        "https://*/*"
     ],
     "background": {
         "service_worker": "background.js"
