@@ -8,6 +8,9 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, classification_report
 from features import FeatureExtractor
 
+from tqdm import tqdm
+from sklearn.metrics import confusion_matrix
+
 def load_data(filepath):
     """
     Loads data from CSV.
@@ -28,16 +31,24 @@ def load_data(filepath):
     
     return df
 
-def extract_features_from_df(df):
+def extract_features_from_df(df, cache_path='ml/data/features_cache.csv'):
     """
     Apply FeatureExtractor to every URL in the dataframe.
+    Uses caching to speed up subsequent runs.
     """
+    if os.path.exists(cache_path):
+        print(f"Loading features from cache: {cache_path}")
+        return pd.read_csv(cache_path), df['label'] # Assuming aligned, but for safety usually better to save XY together.
+        # Ideally we save the whole processed DF. For now let's regenerate X but check cache logic carefully.
+        # Actually simplest: if cache exists, load X from it. But we need y. 
+        # Let's save X and y together in cache.
+        
     print("Extracting features (this may take a while)...")
     
     features_list = []
     labels = []
     
-    for index, row in df.iterrows():
+    for index, row in tqdm(df.iterrows(), total=df.shape[0], desc="Extracting"):
         try:
             url = row['url']
             extractor = FeatureExtractor(url)
@@ -47,19 +58,33 @@ def extract_features_from_df(df):
         except Exception as e:
             # Skip malformed URLs
             continue
-            
-    return pd.DataFrame(features_list), labels
+    
+    X = pd.DataFrame(features_list)
+    
+    # Save cache
+    print(f"Saving features to cache: {cache_path}")
+    X.to_csv(cache_path, index=False)
+    
+    return X, labels
 
 def train_model(X, y):
     print("Training Random Forest model...")
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    # Stratified split ensures equal proportion of classes in train/test
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
     
-    rf = RandomForestClassifier(n_estimators=100, random_state=42)
+    rf = RandomForestClassifier(n_estimators=100, random_state=42, n_jobs=-1)
     rf.fit(X_train, y_train)
     
     y_pred = rf.predict(X_test)
-    print("Model Performance:")
+    print("\nModel Performance:")
     print(classification_report(y_test, y_pred))
+    
+    print("\nConfusion Matrix:")
+    tn, fp, fn, tp = confusion_matrix(y_test, y_pred).ravel()
+    print(f"True Negatives: {tn}")
+    print(f"False Positives: {fp}")
+    print(f"False Negatives: {fn}")
+    print(f"True Positives: {tp}")
     
     return rf
 

@@ -37,6 +37,19 @@ class FeatureExtractor:
         features['has_ip'] = 1 if self._has_ip_address() else 0
         features['suspicious_tld'] = 1 if self.domain_info.suffix in ['tk', 'xyz', 'top', 'club', 'info'] else 0
         
+        # Advanced Features
+        features['count_subdomains'] = len(self.domain_info.subdomain.split('.')) if self.domain_info.subdomain else 0
+        features['is_punycode'] = 1 if 'xn--' in self.url else 0
+        
+        suspicious_keywords = ['login', 'verify', 'update', 'secure', 'account', 'password', 'confirm', 'signin', 'banking']
+        features['has_suspicious_keyword'] = 1 if any(kw in self.url.lower() for kw in suspicious_keywords) else 0
+        
+        features['count_params'] = len(self.parsed.query.split('&')) if self.parsed.query else 0
+        
+        # Domain Specific Ratios
+        domain_str = self.domain_info.domain
+        features['domain_digit_ratio'] = sum(c.isdigit() for c in domain_str) / len(domain_str) if domain_str else 0
+        
         # Complexity
         features['entropy'] = self._calculate_entropy(self.url)
 
