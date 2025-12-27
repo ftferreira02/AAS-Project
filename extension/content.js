@@ -92,9 +92,31 @@ function showWarning(data) {
     proceedBtn.onclick = () => overlay.remove();
     btnContainer.appendChild(proceedBtn);
 
-    // Back Button
+    // Trust Button
+    const trustBtn = document.createElement('button');
+    trustBtn.textContent = 'Trust this Domain';
+    Object.assign(trustBtn.style, {
+        background: '#ffa000',
+        color: 'white',
+        border: 'none',
+        padding: '10px 20px',
+        fontSize: '16px',
+        borderRadius: '5px',
+        cursor: 'pointer',
+        marginLeft: '10px'
+    });
+    trustBtn.onclick = () => {
+        const domain = new URL(window.location.href).hostname;
+        chrome.runtime.sendMessage({ action: "addToAllowlist", domain: domain }, () => {
+            alert("Domain added to allowlist. Please reload.");
+            overlay.remove();
+        });
+    };
+    btnContainer.appendChild(trustBtn);
+
+    // Back Button (Smarter)
     const backBtn = document.createElement('button');
-    backBtn.textContent = 'Go Back';
+    backBtn.textContent = 'Go Back to Safety';
     Object.assign(backBtn.style, {
         background: '#4caf50',
         color: 'white',
@@ -105,7 +127,13 @@ function showWarning(data) {
         cursor: 'pointer',
         marginLeft: '10px'
     });
-    backBtn.onclick = () => window.history.back();
+    backBtn.onclick = () => {
+        if (window.history.length > 1) {
+            window.history.back();
+        } else {
+            window.location.href = "https://www.google.com";
+        }
+    };
     btnContainer.appendChild(backBtn);
 
     box.appendChild(btnContainer);
