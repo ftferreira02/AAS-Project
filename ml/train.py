@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import pickle
 import argparse
+import os
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, classification_report
@@ -62,7 +63,11 @@ def train_model(X, y):
     
     return rf
 
-def save_model(model, filepath='model.pkl'):
+def save_model(model, filepath=None):
+    if filepath is None:
+        # Default to saving in the same directory as this script
+        filepath = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'model.pkl')
+        
     with open(filepath, 'wb') as f:
         pickle.dump(model, f)
     print(f"Model saved to {filepath}")
@@ -70,9 +75,10 @@ def save_model(model, filepath='model.pkl'):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Train Phishing URL Detector")
     parser.add_argument('dataset', help="Path to the training CSV")
+    parser.add_argument('--out', help="Path to save the model", default=None)
     args = parser.parse_args()
     
     df = load_data(args.dataset)
     X, y = extract_features_from_df(df)
     model = train_model(X, y)
-    save_model(model)
+    save_model(model, args.out)

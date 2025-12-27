@@ -29,19 +29,33 @@ We extract **lexical features** from the URL string to train our model. The cont
 
 ## Installation
 
-### 1. Backend Setup
+### 1. Setup (Makefile)
+The project includes a `Makefile` for one-shot setup and running.
+
+```bash
+# 1. Setup Environment & Install Dependencies
+make setup
+make install
+
+# 2. Train the Model
+# Expects ml/data/dataset.csv to exist
+make train
+
+# 3. Run the API
+make run
+```
+
+### Manual Setup (Alternative)
 ```bash
 # Install dependencies
 pip install -r api/requirements.txt
 
-# Train the model (if not already trained)
-# Ensure you have your dataset.csv in ml/data/
+# Train the model (Model saves to ml/model.pkl automatically)
 python ml/train.py ml/data/dataset.csv
 
 # Start the API Server
 python api/app.py
 ```
-*The API will run on http://127.0.0.1:5000*
 
 ### 2. Extension Setup
 1.  Open Chrome and navigate to `chrome://extensions`.
