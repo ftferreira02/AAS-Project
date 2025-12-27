@@ -3,3 +3,4 @@ pandas
 scikit-learn
 tldextract
 flask-cors
+gunicorn

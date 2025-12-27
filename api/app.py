@@ -10,17 +10,10 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'ml'))
 from features import FeatureExtractor
 
 app = Flask(__name__)
-CORS(app)  # Enable CORS for extension
+# Security: Only allow requests from extensions (or localhost for dev)
+CORS(app, resources={r"/predict": {"origins": ["chrome-extension://*", "http://localhost:*", "http://127.0.0.1:*"]}})
 
-# Load Model
-MODEL_PATH = os.path.join(os.path.dirname(__file__), '..', 'ml', 'model.pkl')
-try:
-    with open(MODEL_PATH, 'rb') as f:
-        model = pickle.load(f)
-    print("Model loaded successfully.")
-except Exception as e:
-    print(f"Error loading model: {e}")
-    model = None
+# ... Model Loading ...
 
 @app.route('/predict', methods=['POST'])
 def predict():
@@ -28,10 +21,20 @@ def predict():
         return jsonify({'error': 'Model not loaded'}), 500
         
     data = request.get_json()
+    if not data:
+         return jsonify({'error': 'Invalid JSON'}), 400
+
     url = data.get('url', '')
     
-    if not url:
-        return jsonify({'error': 'No URL provided'}), 400
+    # Input Validation
+    if not url or not isinstance(url, str):
+        return jsonify({'error': 'Invalid URL format'}), 400
+    if len(url) > 2000:
+        return jsonify({'error': 'URL too long'}), 400
+        
+    # Normalization
+    if not url.startswith(('http://', 'https://')):
+        url = 'http://' + url
         
     try:
         # Extract features
@@ -41,19 +44,19 @@ def predict():
         # Convert to DataFrame for model
         input_df = pd.DataFrame([features])
         
-        # Predict
-        prediction = model.predict(input_df)[0]
-        # Get probabilities if available
-        try:
-            proba = model.predict_proba(input_df)[0]
-            confidence = float(max(proba))
-        except:
-            confidence = 1.0
+        # Predict Probabilities
+        # Class 0 = Safe, Class 1 = Phishing
+        proba = model.predict_proba(input_df)[0]
+        phishing_prob = float(proba[1])
+        
+        # Decision Threshold (can be tuned, e.g. 0.6 for stricter)
+        is_phishing = phishing_prob > 0.5
             
         result = {
             'url': url,
-            'is_phishing': bool(prediction == 1),
-            'confidence': confidence,
+            'is_phishing': is_phishing,
+            'phishing_probability': phishing_prob,
+            'confidence': max(proba), # Legacy support
             'features': features
         }
         
@@ -67,4 +70,5 @@ def health():
     return jsonify({'status': 'ok', 'model_loaded': model is not None})
 
 if __name__ == '__main__':
-    app.run(port=5000, debug=True)
+    # Bind to localhost explicitly for security
+    app.run(host='127.0.0.1', port=5000, debug=True)

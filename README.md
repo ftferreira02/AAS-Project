@@ -57,6 +57,13 @@ python ml/train.py ml/data/dataset.csv
 python api/app.py
 ```
 
+### 3. Production Run (Gunicorn)
+For better performance and stability, use Gunicorn:
+```bash
+# Run with 4 worker processes
+./venv/bin/gunicorn -w 4 -b 127.0.0.1:5000 api.app:app
+```
+
 ### 2. Extension Setup
 1.  Open Chrome and navigate to `chrome://extensions`.
 2.  Enable **Developer Mode** (top right toggle).
