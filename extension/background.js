@@ -38,7 +38,7 @@ async function handleCheckUrl(url) {
         const { allowlist = [] } = await chrome.storage.local.get("allowlist");
         const domain = new URL(url).hostname;
         if (allowlist.includes(domain)) {
-            chrome.action.setBadgeText({ text: "✓", tabId: chrome.tabs.TAB_ID_NONE }); // Ideally specific tab 
+            chrome.action.setBadgeText({ text: "✓" }); // Ideally specific tab 
             chrome.action.setBadgeBackgroundColor({ color: "#4caf50" });
             return { is_phishing: false, feature_override: "User Allowed" };
         }
@@ -59,7 +59,7 @@ async function handleCheckUrl(url) {
 
     // 2. Call API
     console.log("Calling API for:", url);
-    chrome.action.setBadgeText({ text: "...", tabId: chrome.tabs.TAB_ID_NONE });
+    chrome.action.setBadgeText({ text: "..."});
 
     try {
         const response = await fetch("http://127.0.0.1:5000/predict", {

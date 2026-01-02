@@ -24,10 +24,13 @@ def load_data(filepath):
     
     # Example for typical datasets:
     # Updated Logic: Treat 'benign' as 0, everything else (phishing, defacement, malware) as 1
-    if 'status' in df.columns:
-        df['label'] = df['status'].apply(lambda x: 0 if x == 'benign' else 1)
-    elif 'type' in df.columns:
-        df['label'] = df['type'].apply(lambda x: 0 if x == 'benign' else 1)
+    # if 'status' in df.columns:
+    #     df['label'] = df['status'].apply(lambda x: 0 if x == 'benign' else 1)
+    # elif 'type' in df.columns:
+    #     df['label'] = df['type'].apply(lambda x: 0 if x == 'benign' else 1)
+    if "result" in df.columns:
+        df["label"] = df["result"].astype(int)
+        return df     
     
     return df
 

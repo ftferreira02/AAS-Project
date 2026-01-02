@@ -16,10 +16,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             if (response.is_phishing) {
-                statusBox.textContent = "⚠️ PHISHING DETECTED";
+                statusBox.textContent = "PHISHING DETECTED";
                 statusBox.className = "status phishing";
             } else {
-                statusBox.textContent = "✅ SAFE";
+                statusBox.textContent = "SAFE";
                 statusBox.className = "status safe";
             }
             statusBox.style.display = 'block';

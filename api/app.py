@@ -5,6 +5,15 @@ import sys
 import os
 import pandas as pd
 
+MODEL_PATH = os.path.join(os.path.dirname(__file__), "..", "ml", "model.pkl")
+model = None
+
+def load_model():
+    global model
+    if model is None and os.path.exists(MODEL_PATH):
+        with open(MODEL_PATH, "rb") as f:
+            model = pickle.load(f)
+
 # Add ml folder to path to import features.py
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'ml'))
 from features import FeatureExtractor
@@ -67,6 +76,7 @@ def predict():
 
 @app.route('/health', methods=['GET'])
 def health():
+    load_model()
     return jsonify({'status': 'ok', 'model_loaded': model is not None})
 
 if __name__ == '__main__':
