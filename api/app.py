@@ -13,7 +13,15 @@ app = Flask(__name__)
 # Security: Only allow requests from extensions (or localhost for dev)
 CORS(app, resources={r"/predict": {"origins": ["chrome-extension://*", "http://localhost:*", "http://127.0.0.1:*"]}})
 
-# ... Model Loading ...
+# Load Model
+MODEL_PATH = os.path.join(os.path.dirname(__file__), '..', 'ml', 'model.pkl')
+try:
+    with open(MODEL_PATH, 'rb') as f:
+        model = pickle.load(f)
+    print("Model loaded successfully.")
+except Exception as e:
+    print(f"Error loading model: {e}")
+    model = None
 
 @app.route('/predict', methods=['POST'])
 def predict():
@@ -43,20 +51,23 @@ def predict():
         
         # Convert to DataFrame for model
         input_df = pd.DataFrame([features])
+        input_df = input_df.reindex(sorted(input_df.columns), axis=1)
         
         # Predict Probabilities
         # Class 0 = Safe, Class 1 = Phishing
         proba = model.predict_proba(input_df)[0]
         phishing_prob = float(proba[1])
+        confidence = max(proba)
         
         # Decision Threshold (can be tuned, e.g. 0.6 for stricter)
+
         is_phishing = phishing_prob > 0.5
             
         result = {
             'url': url,
             'is_phishing': is_phishing,
             'phishing_probability': phishing_prob,
-            'confidence': max(proba), # Legacy support
+            'confidence': confidence,
             'features': features
         }
         

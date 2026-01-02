@@ -33,7 +33,7 @@ class FeatureExtractor:
         features['ratio_special'] = features['count_special'] / total_chars if total_chars > 0 else 0
 
         # Domain/Protocol
-        features['is_https'] = 1 if self.parsed.scheme == 'https' else 0
+        features['is_https'] = 1 if self.parsed.scheme == 'https' else 0 # Disabled due to dataset bias (missing schemes)
         features['has_ip'] = 1 if self._has_ip_address() else 0
         features['suspicious_tld'] = 1 if self.domain_info.suffix in ['tk', 'xyz', 'top', 'club', 'info'] else 0
         
@@ -51,7 +51,9 @@ class FeatureExtractor:
         features['domain_digit_ratio'] = sum(c.isdigit() for c in domain_str) / len(domain_str) if domain_str else 0
         
         # Complexity
+        # Analyze Domain Entropy separately (Structure is more important than Path randomness)
         features['entropy'] = self._calculate_entropy(self.url)
+        features['domain_entropy'] = self._calculate_entropy(self.domain_info.fqdn)
 
         return features
 

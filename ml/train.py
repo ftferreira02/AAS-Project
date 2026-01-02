@@ -38,15 +38,22 @@ def extract_features_from_df(df, cache_path='ml/data/features_cache.csv'):
     """
     if os.path.exists(cache_path):
         print(f"Loading features from cache: {cache_path}")
-        return pd.read_csv(cache_path), df['label'] # Assuming aligned, but for safety usually better to save XY together.
-        # Ideally we save the whole processed DF. For now let's regenerate X but check cache logic carefully.
-        # Actually simplest: if cache exists, load X from it. But we need y. 
-        # Let's save X and y together in cache.
+        cached_df = pd.read_csv(cache_path)
+        # Ensure labels are present
+        if 'label' not in cached_df.columns:
+             print("Cache invalid (missing labels). Regenerating...")
+        else:
+             # Drop non-feature columns for X
+             y = cached_df['label']
+             X = cached_df.drop(columns=['label', 'url'], errors='ignore')
+             X = X.reindex(sorted(X.columns), axis=1)
+             return X, y
         
     print("Extracting features (this may take a while)...")
     
     features_list = []
     labels = []
+    valid_urls = []
     
     for index, row in tqdm(df.iterrows(), total=df.shape[0], desc="Extracting"):
         try:
@@ -55,15 +62,23 @@ def extract_features_from_df(df, cache_path='ml/data/features_cache.csv'):
             features = extractor.get_features()
             features_list.append(features)
             labels.append(row['label'])
+            valid_urls.append(url)
         except Exception as e:
             # Skip malformed URLs
             continue
     
     X = pd.DataFrame(features_list)
+    # Enforce alphabetical order for consistency
+    X = X.reindex(sorted(X.columns), axis=1)
+
+    # Add label and url for caching
+    cache_df = X.copy()
+    cache_df['label'] = labels
+    cache_df['url'] = valid_urls
     
     # Save cache
     print(f"Saving features to cache: {cache_path}")
-    X.to_csv(cache_path, index=False)
+    cache_df.to_csv(cache_path, index=False)
     
     return X, labels
 
