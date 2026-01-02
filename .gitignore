@@ -18,5 +18,6 @@ __pycache__/
 *.pyc
 
 # ML Artifacts
+ml/data/
 ml/model.pkl
 *.pkl

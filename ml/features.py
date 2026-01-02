@@ -42,7 +42,16 @@ class FeatureExtractor:
         features['is_punycode'] = 1 if 'xn--' in self.url else 0
         
         suspicious_keywords = ['login', 'verify', 'update', 'secure', 'account', 'password', 'confirm', 'signin', 'banking']
-        features['has_suspicious_keyword'] = 1 if any(kw in self.url.lower() for kw in suspicious_keywords) else 0
+        u = self.url.lower()
+        host = self.parsed.netloc.lower()
+        path = self.parsed.path.lower()
+        query = self.parsed.query.lower()
+
+        features['kw_in_domain'] = 1 if any(kw in host for kw in suspicious_keywords) else 0
+        features['kw_in_path']   = 1 if any(kw in path for kw in suspicious_keywords) else 0
+        features['kw_in_query']  = 1 if any(kw in query for kw in suspicious_keywords) else 0
+        features['kw_count']     = sum(u.count(kw) for kw in suspicious_keywords)
+        # features['has_suspicious_keyword'] = 1 if any(kw in self.url.lower() for kw in suspicious_keywords) else 0
         
         features['count_params'] = len(self.parsed.query.split('&')) if self.parsed.query else 0
         

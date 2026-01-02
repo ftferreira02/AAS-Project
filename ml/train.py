@@ -11,6 +11,9 @@ from features import FeatureExtractor
 from tqdm import tqdm
 from sklearn.metrics import confusion_matrix
 
+from urllib.parse import urlsplit
+from sklearn.model_selection import GroupShuffleSplit
+
 def load_data(filepath):
     """
     Loads data from CSV.
@@ -70,10 +73,10 @@ def extract_features_from_df(df, cache_path='ml/data/features_cache.csv'):
     
     return X, labels
 
-def train_model(X, y):
+def train_model(X_train, y_train, X_test, y_test):
     print("Training Random Forest model...")
     # Stratified split ensures equal proportion of classes in train/test
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+    # X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
     
     rf = RandomForestClassifier(n_estimators=100, random_state=42, n_jobs=-1)
     rf.fit(X_train, y_train)
@@ -107,6 +110,21 @@ if __name__ == "__main__":
     args = parser.parse_args()
     
     df = load_data(args.dataset)
+    df["hostname"] = df["url"].astype(str).apply(lambda u: urlsplit(u if u.startswith(("http://","https://")) else "http://" + u).netloc.lower())
+    
+    gss = GroupShuffleSplit(n_splits=1, test_size=0.2, random_state=42)
+    train_idx, test_idx = next(gss.split(df, y=df["label"], groups=df["hostname"]))
+
+    df_train = df.iloc[train_idx].reset_index(drop=True)
+    df_test  = df.iloc[test_idx].reset_index(drop=True)
+
+    X_train, y_train = extract_features_from_df(df_train, cache_path="ml/data/features_train_cache.csv")
+    X_test,  y_test  = extract_features_from_df(df_test,  cache_path="ml/data/features_test_cache.csv")
+
+    print(f"Train rows: {len(df_train)} | Test rows: {len(df_test)}")
+    print(f"Unique hostnames train: {df_train['hostname'].nunique()} | test: {df_test['hostname'].nunique()}")
+
+
     X, y = extract_features_from_df(df)
-    model = train_model(X, y)
+    model = train_model(X_train, y_train, X_test, y_test)
     save_model(model, args.out)
