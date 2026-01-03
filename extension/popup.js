@@ -3,7 +3,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const currentTab = tabs[0];
         const url = currentTab.url;
 
-        chrome.runtime.sendMessage({ action: "checkUrl", url: url }, (response) => {
+        chrome.runtime.sendMessage({ action: "checkUrl", url: url, tabId: currentTab.id }, (response) => {
             document.getElementById('loading').style.display = 'none';
             const statusBox = document.getElementById('status-box');
             const details = document.getElementById('details');
@@ -15,12 +15,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            if (response.is_phishing) {
+            if (response.level === 'warning') {
+                statusBox.textContent = "SUSPICIOUS SITE DETECTED";
+                statusBox.className = "status warning";
+                statusBox.style.backgroundColor = "#ff9800";
+            } else if (response.is_phishing || response.level === 'unsafe') {
                 statusBox.textContent = "PHISHING DETECTED";
                 statusBox.className = "status phishing";
+                statusBox.style.backgroundColor = "#d32f2f";
             } else {
                 statusBox.textContent = "SAFE";
                 statusBox.className = "status safe";
+                statusBox.style.backgroundColor = "#4caf50";
             }
             statusBox.style.display = 'block';
 

@@ -17,6 +17,14 @@ function showWarning(data) {
     // Prevent duplicate overlays
     if (document.getElementById('phish-detector-overlay')) return;
 
+    // Determine Style based on Level
+    const isWarning = data.level === 'warning';
+    const bgColor = isWarning ? 'rgba(255, 152, 0, 0.95)' : 'rgba(200, 0, 0, 0.95)';
+    const titleColor = isWarning ? '#e65100' : '#d32f2f';
+    const titleText = isWarning ? '⚠️ Suspicious Site Detected' : '⚠️ Phishing Detected';
+    const proceedText = isWarning ? 'Proceed with Caution' : 'Proceed Anyway (Unsafe)';
+    const proceedColor = isWarning ? '#fb8c00' : '#ef5350';
+
     // Create overlay container
     const overlay = document.createElement('div');
     overlay.id = 'phish-detector-overlay';
@@ -26,7 +34,7 @@ function showWarning(data) {
         left: '0',
         width: '100%',
         height: '100%',
-        backgroundColor: 'rgba(200, 0, 0, 0.9)',
+        backgroundColor: bgColor,
         zIndex: '999999',
         display: 'flex',
         flexDirection: 'column',
@@ -50,8 +58,8 @@ function showWarning(data) {
 
     // Header
     const h1 = document.createElement('h1');
-    h1.textContent = '⚠️ Phishing Detected';
-    h1.style.color = '#d32f2f';
+    h1.textContent = titleText;
+    h1.style.color = titleColor;
     h1.style.marginTop = '0';
     box.appendChild(h1);
 
@@ -62,7 +70,7 @@ function showWarning(data) {
     strongUrl.textContent = data.url; // Safe text insertion
     p1.appendChild(document.createTextNode('The URL '));
     p1.appendChild(strongUrl);
-    p1.appendChild(document.createTextNode(' has been flagged as potential phishing.'));
+    p1.appendChild(document.createTextNode(' has been flagged as ' + (isWarning ? 'suspicious' : 'potential phishing') + '.'));
     box.appendChild(p1);
 
     // Confidence
@@ -79,9 +87,9 @@ function showWarning(data) {
 
     // Proceed Button
     const proceedBtn = document.createElement('button');
-    proceedBtn.textContent = 'Proceed Anyway (Unsafe)';
+    proceedBtn.textContent = proceedText;
     Object.assign(proceedBtn.style, {
-        background: '#ef5350',
+        background: proceedColor,
         color: 'white',
         border: 'none',
         padding: '10px 20px',

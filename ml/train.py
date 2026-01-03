@@ -45,10 +45,14 @@ def extract_features_from_df(df, cache_path='ml/data/features_cache.csv'):
     """
     if os.path.exists(cache_path):
         print(f"Loading features from cache: {cache_path}")
-        return pd.read_csv(cache_path), df['label'] # Assuming aligned, but for safety usually better to save XY together.
-        # Ideally we save the whole processed DF. For now let's regenerate X but check cache logic carefully.
-        # Actually simplest: if cache exists, load X from it. But we need y. 
-        # Let's save X and y together in cache.
+        try:
+            cached_X = pd.read_csv(cache_path)
+            if len(cached_X) == len(df):
+                return cached_X, df['label']
+            else:
+                print(f"Cache mismatch (Cache: {len(cached_X)}, Data: {len(df)}). Regenerating...")
+        except Exception as e:
+            print(f"Error loading cache: {e}. Regenerating...")
         
     print("Extracting features (this may take a while)...")
     

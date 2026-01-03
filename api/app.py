@@ -59,14 +59,27 @@ def predict():
         proba = model.predict_proba(input_df)[0]
         phishing_prob = float(proba[1])
         
-        # Decision Threshold (can be tuned, e.g. 0.6 for stricter)
-        is_phishing = phishing_prob > 0.5
-            
+        # Decision Policy (3-Level)
+        # Safe:    prob < 0.60
+        # Warning: 0.60 <= prob < 0.85
+        # Unsafe:  prob >= 0.85
+        
+        if phishing_prob < 0.60:
+            level = "safe"
+            is_phishing = False
+        elif phishing_prob < 0.85:
+            level = "warning"
+            is_phishing = True # Trigger the extension, but we'll show a warning UI
+        else:
+            level = "unsafe"
+            is_phishing = True
+
         result = {
             'url': url,
             'is_phishing': is_phishing,
             'phishing_probability': phishing_prob,
-            'confidence': max(proba), # Legacy support
+            'confidence': max(proba),
+            'level': level, # New field
             'features': features
         }
         

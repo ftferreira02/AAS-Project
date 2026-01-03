@@ -16,11 +16,19 @@ setInterval(() => {
 // Listen for messages including allowlist updates
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === "checkUrl") {
-        handleCheckUrl(request.url).then(sendResponse);
+        const tabId = request.tabId || (sender.tab ? sender.tab.id : undefined);
+        handleCheckUrl(request.url, tabId).then(sendResponse);
         return true;
     } else if (request.action === "addToAllowlist") {
         addToAllowlist(request.domain).then(() => sendResponse({ success: true }));
         return true;
+    }
+});
+
+// Auto-analyze when tab updates
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+    if (changeInfo.status === 'complete' && tab.url && tab.url.startsWith('http')) {
+        handleCheckUrl(tab.url, tabId);
     }
 });
 
@@ -32,14 +40,16 @@ async function addToAllowlist(domain) {
     }
 }
 
-async function handleCheckUrl(url) {
+async function handleCheckUrl(url, tabId) {
     // 0. Check Allowlist
     try {
         const { allowlist = [] } = await chrome.storage.local.get("allowlist");
         const domain = new URL(url).hostname;
         if (allowlist.includes(domain)) {
-            chrome.action.setBadgeText({ text: "✓" }); // Ideally specific tab 
-            chrome.action.setBadgeBackgroundColor({ color: "#4caf50" });
+            if (tabId) {
+                chrome.action.setBadgeText({ text: "✓", tabId: tabId });
+                chrome.action.setBadgeBackgroundColor({ color: "#4caf50", tabId: tabId });
+            }
             return { is_phishing: false, feature_override: "User Allowed" };
         }
     } catch (e) { console.error(e); }
@@ -50,7 +60,7 @@ async function handleCheckUrl(url) {
         const entry = cache.get(url);
         if (now - entry.timestamp < CACHE_TTL_MS) {
             console.log("Returning cached result for:", url);
-            updateBadge(entry.result.is_phishing);
+            updateBadge(entry.result, tabId);
             return entry.result;
         } else {
             cache.delete(url);
@@ -59,7 +69,9 @@ async function handleCheckUrl(url) {
 
     // 2. Call API
     console.log("Calling API for:", url);
-    chrome.action.setBadgeText({ text: "..."});
+    if (tabId) {
+        chrome.action.setBadgeText({ text: "...", tabId: tabId });
+    }
 
     try {
         const response = await fetch("http://127.0.0.1:5000/predict", {
@@ -81,7 +93,7 @@ async function handleCheckUrl(url) {
             result: data,
             timestamp: now
         });
-        updateBadge(data.is_phishing);
+        updateBadge(data, tabId);
 
         return data; // { is_phishing: bool, confidence: float, ... }
 
@@ -91,12 +103,17 @@ async function handleCheckUrl(url) {
     }
 }
 
-function updateBadge(isPhishing) {
-    if (isPhishing) {
-        chrome.action.setBadgeText({ text: "!" });
-        chrome.action.setBadgeBackgroundColor({ color: "#d32f2f" });
+function updateBadge(data, tabId) {
+    if (!tabId) return; // Cannot update badge without tabId
+
+    if (data.level === "warning") {
+        chrome.action.setBadgeText({ text: "?", tabId: tabId });
+        chrome.action.setBadgeBackgroundColor({ color: "#ff9800", tabId: tabId }); // Orange
+    } else if (data.level === "unsafe" || (data.is_phishing && !data.level)) {
+        chrome.action.setBadgeText({ text: "!", tabId: tabId });
+        chrome.action.setBadgeBackgroundColor({ color: "#d32f2f", tabId: tabId }); // Red
     } else {
-        chrome.action.setBadgeText({ text: "✓" });
-        chrome.action.setBadgeBackgroundColor({ color: "#4caf50" });
+        chrome.action.setBadgeText({ text: "✓", tabId: tabId });
+        chrome.action.setBadgeBackgroundColor({ color: "#4caf50", tabId: tabId }); // Green
     }
 }

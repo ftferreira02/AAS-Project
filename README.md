@@ -38,7 +38,7 @@ make setup
 make install
 
 # 2. Train the Model
-# Expects ml/data/dataset.csv to exist
+# Expects ml/data/dataset2.csv to exist
 make train
 
 # 3. Run the API
