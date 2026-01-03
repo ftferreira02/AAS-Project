@@ -27,11 +27,12 @@ def load_data(filepath):
     
     # Example for typical datasets:
     # Updated Logic: Treat 'benign' as 0, everything else (phishing, defacement, malware) as 1
-    # if 'status' in df.columns:
-    #     df['label'] = df['status'].apply(lambda x: 0 if x == 'benign' else 1)
-    # elif 'type' in df.columns:
-    #     df['label'] = df['type'].apply(lambda x: 0 if x == 'benign' else 1)
-    if "result" in df.columns:
+    # Updated Logic: Treat 'benign' as 0, everything else (phishing, defacement, malware) as 1
+    if 'status' in df.columns:
+        df['label'] = df['status'].apply(lambda x: 0 if x == 'benign' else 1)
+    elif 'type' in df.columns:
+        df['label'] = df['type'].apply(lambda x: 0 if x == 'benign' else 1)
+    elif "result" in df.columns:
         df["label"] = df["result"].astype(int)
         return df     
     
@@ -110,7 +111,20 @@ if __name__ == "__main__":
     args = parser.parse_args()
     
     df = load_data(args.dataset)
-    df["hostname"] = df["url"].astype(str).apply(lambda u: urlsplit(u if u.startswith(("http://","https://")) else "http://" + u).netloc.lower())
+    
+    def get_hostname(u):
+        try:
+            u = str(u)
+            if not u.startswith(("http://", "https://")):
+                u = "http://" + u
+            return urlsplit(u).netloc.lower()
+        except ValueError:
+            return ""
+
+    df["hostname"] = df["url"].apply(get_hostname)
+    
+    # Remove rows where hostname could not be parsed (optional, keeps data clean)
+    # df = df[df["hostname"] != ""] 
     
     gss = GroupShuffleSplit(n_splits=1, test_size=0.2, random_state=42)
     train_idx, test_idx = next(gss.split(df, y=df["label"], groups=df["hostname"]))
@@ -124,7 +138,5 @@ if __name__ == "__main__":
     print(f"Train rows: {len(df_train)} | Test rows: {len(df_test)}")
     print(f"Unique hostnames train: {df_train['hostname'].nunique()} | test: {df_test['hostname'].nunique()}")
 
-
-    X, y = extract_features_from_df(df)
     model = train_model(X_train, y_train, X_test, y_test)
     save_model(model, args.out)

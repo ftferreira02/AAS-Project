@@ -10,7 +10,7 @@ install:
 	$(PIP) install -r api/requirements.txt
 
 train:
-	$(PYTHON) ml/train.py ml/data/dataset.csv
+	$(PYTHON) ml/train.py ml/data/dataset2.csv
 
 run:
 	$(PYTHON) api/app.py

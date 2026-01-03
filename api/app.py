@@ -22,7 +22,8 @@ app = Flask(__name__)
 # Security: Only allow requests from extensions (or localhost for dev)
 CORS(app, resources={r"/predict": {"origins": ["chrome-extension://*", "http://localhost:*", "http://127.0.0.1:*"]}})
 
-# ... Model Loading ...
+# Load model on startup
+load_model()
 
 @app.route('/predict', methods=['POST'])
 def predict():

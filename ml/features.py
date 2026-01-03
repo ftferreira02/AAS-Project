@@ -1,12 +1,12 @@
 import re
 import math
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urlsplit, urlunsplit, parse_qsl, urlencode
 import tldextract
 
 class FeatureExtractor:
     def __init__(self, url):
-        self.url = url
-        self.parsed = urlparse(url)
+        self.url = strip_tracking_params(url)
+        self.parsed = urlparse(self.url)
         self.domain_info = tldextract.extract(url)
 
     def get_features(self):
@@ -91,6 +91,25 @@ class FeatureExtractor:
             entropy += - p_x * math.log2(p_x)
             
         return entropy
+
+
+TRACKING_KEYS = {
+    "gclid", "fbclid", "gbraid", "wbraid", "gad_source", "gclsrc",
+    "gad_campaignid", "dplnk", "ds_rl"
+}
+
+def strip_tracking_params(url: str) -> str:
+    # Ensure scheme/netloc are present for urlsplit to work reliably on partial URLs
+    # But usually we expect valid URLs here.
+    s = urlsplit(url)
+    q = [
+        (k, v) for (k, v) in parse_qsl(s.query, keep_blank_values=True)
+        if not (k.lower().startswith("utm_") or k.lower() in TRACKING_KEYS)
+    ]
+    new_query = urlencode(q, doseq=True)
+    # drop fragment too (it is not sent to servers and often noisy)
+    return urlunsplit((s.scheme, s.netloc, s.path, new_query, ""))
+
 
 if __name__ == "__main__":
     # Test
