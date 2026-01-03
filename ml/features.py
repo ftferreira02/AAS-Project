@@ -5,9 +5,13 @@ import tldextract
 
 class FeatureExtractor:
     def __init__(self, url):
-        self.url = strip_tracking_params(url)
+        u = strip_tracking_params(url)
+        if not u.startswith(("http://", "https://")):
+            u = "http://" + u
+        self.url = u
         self.parsed = urlparse(self.url)
-        self.domain_info = tldextract.extract(url)
+        self.domain_info = tldextract.extract(self.url)
+
 
     def get_features(self):
         """Returns a dictionary of all extracted features."""
