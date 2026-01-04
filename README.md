@@ -1,31 +1,28 @@
 # Phishing URL Detector
 
-A privacy-preserving browser extension that detects phishing attempts using a lightweight Machine Learning model.
+A privacy-preserving browser extension that detects phishing attempts using a state-of-the-art **Hybrid Ensemble** of Machine Learning and Deep Learning models.
 
 ## Overview
-This project implements a **Lexical URL Analysis** system to detect phishing websites in real-time. Unlike traditional blacklist methods, our approach analyzes the *structure* of the URL itself (length, special characters, entropy) to identify malicious patterns without needing to download page content or compromise user privacy.
+This project implements a system to detect phishing websites in real-time. Unlike traditional blacklist methods, our approach analyzes the *structure* of the URL itself (length, special characters, entropy) using a Lexical Model, and the *visual character patterns* using a Deep Learning model.
 
-### Core Architecture
-The system consists of three main components:
+## Core Architecture
 
-1.  **Chrome Extension**: Intercepts navigation events and queries the analysis engine.
-2.  **Analysis API (Flask)**: A Python backend that extracts features and runs the ML model.
-3.  **ML Model (Random Forest)**: A trained classifier that predicts if a URL is safe or phishing based on 20+ lexical features.
+### 1. Hybrid Ensemble Model
+We combine two powerful models to achieve maximum safety and detection power:
+*   **Lexical Model (XGBoost Calibrated)**: Analyzes 20+ feature counts (e.g., dot count, entropy, length). Excellent at statistical detection.
+*   **Visual Model (Char-CNN)**: A Deep Learning Convolutional Neural Network that reads the URL character-by-character to detect patterns (e.g., `g0ogle`, `secure-login`) that standard features miss.
+*   **Ensemble Policy**: `Final Score = (0.4 * Lexical) + (0.6 * CNN)`.
 
-# Technology Stack
-*   **Frontend**: HTML, CSS, JavaScript (Chrome Manifest V3)
-*   **Backend**: Python, Flask
-*   **Machine Learning**: Scikit-Learn (Random Forest), Pandas
-*   **Feature Extraction**: `tldextract`, Entropy analysis, RegEx
+### 2. Probabilistic Decision Policy
+Instead of a binary Safe/Unsafe check, we use a calibrated probability system:
+*   **Safe (< 60%)**: Allow access (Badges Green).
+*   **Warning (60% - 85%)**: Show warning UI, allow proceed (Badge Orange).
+*   **Unsafe (> 85%)**: Block access immediately (Badge Red).
 
-## Methodology
-We extract **lexical features** from the URL string to train our model. The content of the webpage is *never* accessed, making this approach fast and secure.
-
-**Key Features Extracted:**
-*   **Structural**: URL length, domain length, path depth.
-*   **Statistical**: Count of special characters (`@`, `-`, `.`), digit-to-letter ratios.
-*   **Complexity**: Shannon entropy (to detect random gibberish).
-*   **Patterns**: Suspicious TLDs, IP address usage, direct login keywords.
+## Performance
+*   **Accuracy**: **99.20%**
+*   **Phishing Recall**: **96.52%** (Caught 19,304 of 20,000 phishing sites)
+*   **False Positive Rate**: **0.013%** (Only 9 false alarms out of 68,000 safe sites).
 
 ## Installation
 
@@ -37,31 +34,12 @@ The project includes a `Makefile` for one-shot setup and running.
 make setup
 make install
 
-# 2. Train the Model
-# Expects ml/data/dataset2.csv to exist
+# 2. Train the Models (XGBoost + Char-CNN)
+# Expects ml/data/dataset2.csv
 make train
 
-# 3. Run the API
+# 3. Run the API (Serves the Ensemble)
 make run
-```
-
-### Manual Setup (Alternative)
-```bash
-# Install dependencies
-pip install -r api/requirements.txt
-
-# Train the model (Model saves to ml/model.pkl automatically)
-python ml/train.py ml/data/dataset.csv
-
-# Start the API Server
-python api/app.py
-```
-
-### 3. Production Run (Gunicorn)
-For better performance and stability, use Gunicorn:
-```bash
-# Run with 4 worker processes
-./venv/bin/gunicorn -w 4 -b 127.0.0.1:5000 api.app:app
 ```
 
 ### 2. Extension Setup
@@ -70,13 +48,12 @@ For better performance and stability, use Gunicorn:
 3.  Click **Load Unpacked**.
 4.  Select the `extension/` directory of this project.
 
-##  Usage
-1.  Ensure the Python API is running.
-2.  Browse the web normally.
-3.  The extension icon will show the current status.
-4.  If a **Phishing Site** is detected, a red warning overlay will block access (with an option to proceed if you trust the site).
+## Methodology
+We extract **lexical features** from the URL string to train our model. The content of the webpage is *never* accessed, making this approach fast and secure.
 
-## Performance
-*   **Model**: Random Forest Classifier
-*   **Accuracy**: ~94% (on validation set)
-*   **Inference Time**: < 50ms per URL
+**Key Features Extracted:**
+*   **Structural**: URL length, domain length, path depth.
+*   **Statistical**: Count of special characters (`@`, `-`, `.`), digit-to-letter ratios.
+*   **Complexity**: Shannon entropy (to detect random gibberish).
+*   **Patterns**: Suspicious TLDs, IP address usage, direct login keywords.
+*   **Deep Learning**: Character-level embedding vectors (Char-CNN).
