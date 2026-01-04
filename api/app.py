@@ -81,10 +81,14 @@ def predict():
         # Convert to DataFrame for model
         input_df = pd.DataFrame([features])
         
-        expected = get_expected_feature_names(model)
-        if expected is not None:
-            input_df = input_df.reindex(columns=expected, fill_value=0)
-
+        # FIX: Ensure columns are in the exact same order as training
+        # This prevents silent errors where "url_length" might overlap with "entropy"
+        if hasattr(model, "feature_names_in_"):
+            input_df = input_df.reindex(columns=model.feature_names_in_, fill_value=0)
+        else:
+            # Fallback (unlikely needed with recent sklearn)
+            input_df = input_df.reindex(sorted(input_df.columns), axis=1, fill_value=0)
+        
         # Predict Probabilities
         # Class 0 = Safe, Class 1 = Phishing
         proba = model.predict_proba(input_df)[0]
