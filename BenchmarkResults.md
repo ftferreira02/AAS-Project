@@ -20,17 +20,23 @@ This document compares the performance of 5 different model configurations for P
 | **Logistic Regression** | 99.32% | 273 | 320 | 98.40% | 98.63% |
 | **RF Calibrated** | 99.35% | 48 | 525 | 97.37% | 99.75% |
 | **XGB Calibrated** | 99.24% | 36 | 634 | 96.83% | 99.81% |
-| **Hybrid (XGB+CNN)** | 99.20% | **9** | 695 | 96.52% | **99.95%** |
+| **Hybrid (RF+CNN)** | **99.27%** | 11 | **631** | **96.84%** | 99.94% |
+| **Hybrid (XGB+CNN)** | **99.25%** | **9** | **652** | **96.74%** | **99.95%** |
 
 ---
 
 ## Analysis
 
-### 1. Hybrid Superiority (The "Safety King")
-*   **False Positives**: Dropped from **36** (XGB-Calibrated) to just **9** (Hybrid).
-    *   This is a **75% reduction** in false alarms.
-    *   Out of ~68,000 safe sites, only 9 were wrongly flagged. This is near-perfect safety.
-*   **Trade-off**: Slightly higher miss rate (695 misses vs 634). We trade ~60 missed phishing sites to save ~27 innocent sites. In a user-facing tool, this is the correct trade.
+### 1. Hybrid Battle: Random Forest vs XGBoost
+*   **Safety (False Positives)**: **XGB Wins** (9 vs 11).
+    *   RF flagged 2 extra safe sites: `titaniclinux.net` and `jamit.com.au`.
+    *   XGB correctly saw these as safe.
+*   **Detection (Recall)**: **RF Wins** (Caught 21 more phishing sites).
+*   **Verdict**: We stick with **XGBoost** because for a browser extension, preventing false alarms (blocking a user's school or project site) is critical. 9 FPs is better than 11.
+
+### 2. Impact of Normalization
+*   The new features (Ratio-based dots, hostname length) improved detection power for both models.
+    *   **False Negatives dropped significantly** (e.g., XGB went from 695 to 652).
 
 ### 2. Calibration vs Raw
 *   **Impact**: Calibration significantly reduces False Positives but reduces Phishing Recall.
