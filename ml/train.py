@@ -126,7 +126,7 @@ def build_model(model_name: str):
     model_name = model_name.lower()
 
     if model_name == "rf":
-        return RandomForestClassifier(n_estimators=100, random_state=42, n_jobs=-1)
+        return RandomForestClassifier(n_estimators=100, class_weight='balanced', random_state=42, n_jobs=-1)
 
     if model_name == "xgb":
         # Recommended by research for higher accuracy on lexical features
@@ -136,6 +136,7 @@ def build_model(model_name: str):
             max_depth=10, 
             use_label_encoder=False, 
             eval_metric='logloss',
+            scale_pos_weight=3, # Fix class imbalance (approx 3:1 ratio)
             random_state=42,
             n_jobs=-1
         )
@@ -152,7 +153,7 @@ def build_model(model_name: str):
         ])
 
     if model_name == "rf_calibrated":
-        base = RandomForestClassifier(n_estimators=200, random_state=42, n_jobs=-1)
+        base = RandomForestClassifier(n_estimators=200, class_weight='balanced', random_state=42, n_jobs=-1)
         return CalibratedClassifierCV(estimator=base, method="isotonic", cv=3)
 
     if model_name == "xgb_calibrated":
@@ -162,6 +163,7 @@ def build_model(model_name: str):
             max_depth=10, 
             use_label_encoder=False, 
             eval_metric='logloss',
+            scale_pos_weight=3, # Fix class imbalance
             random_state=42,
             n_jobs=-1
         )
