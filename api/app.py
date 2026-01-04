@@ -7,9 +7,11 @@ import pandas as pd
 
 MODEL_PATH = os.environ.get(
     "MODEL_PATH",
-    os.path.join(os.path.dirname(__file__), "..", "ml", "runs", "rf_calibrated", "model.pkl")
+    os.path.join(os.path.dirname(__file__), "..", "ml", "model.pkl")
 )
+CNN_PATH = os.path.join(os.path.dirname(__file__), "..", "ml", "runs", "char_cnn")
 model = None
+cnn_model = None
 
 def get_expected_feature_names(m):
     # Plain estimators trained with pandas
@@ -41,9 +43,26 @@ def load_model():
         with open(MODEL_PATH, "rb") as f:
             model = pickle.load(f)
 
+def load_cnn():
+    global cnn_model
+    if cnn_model is None and CharCNN and os.path.exists(CNN_PATH):
+        try:
+            print(f"Loading CNN from {CNN_PATH}...")
+            cnn_model = CharCNN()
+            cnn_model.load(CNN_PATH)
+        except Exception as e:
+            print(f"Failed to load CNN: {e}")
+            cnn_model = None
+
 # Add ml folder to path to import features.py
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'ml'))
 from features import FeatureExtractor
+
+try:
+    from char_cnn import CharCNN
+except ImportError:
+    print("Warning: Could not import CharCNN")
+    CharCNN = None
 
 app = Flask(__name__)
 # Security: Only allow requests from extensions (or localhost for dev)
@@ -51,6 +70,7 @@ CORS(app, resources={r"/predict": {"origins": ["chrome-extension://*", "http://l
 
 # Load model on startup
 load_model()
+load_cnn()
 
 @app.route('/predict', methods=['POST'])
 def predict():
@@ -92,7 +112,17 @@ def predict():
         # Predict Probabilities
         # Class 0 = Safe, Class 1 = Phishing
         proba = model.predict_proba(input_df)[0]
-        phishing_prob = float(proba[1])
+        if cnn_model:
+            # Ensemble Strategy: 40% Lexical + 60% CNN
+            # Note: CNN predict returns raw probability 0-1
+            prob_cnn = float(cnn_model.predict(url)[0])
+            # Lexical proba[1] is the phishing probability
+            prob_lex = float(proba[1])
+            
+            phishing_prob = (0.4 * prob_lex) + (0.6 * prob_cnn)
+            print(f"Ensemble: Lexical={prob_lex:.4f}, CNN={prob_cnn:.4f} -> Final={phishing_prob:.4f}")
+        else:
+            phishing_prob = float(proba[1])
         
         # Decision Policy (3-Level)
         # Safe:    prob < 0.60
@@ -113,8 +143,8 @@ def predict():
             'url': url,
             'is_phishing': is_phishing,
             'phishing_probability': phishing_prob,
-            'confidence': max(proba),
-            'level': level, # New field
+            'confidence': max(proba) if not cnn_model else phishing_prob, 
+            'level': level, 
             'features': features
         }
         
@@ -126,7 +156,8 @@ def predict():
 @app.route('/health', methods=['GET'])
 def health():
     load_model()
-    return jsonify({'status': 'ok', 'model_loaded': model is not None})
+    load_cnn()
+    return jsonify({'status': 'ok', 'model_loaded': model is not None, 'cnn_loaded': cnn_model is not None})
 
 if __name__ == '__main__':
     # Bind to localhost explicitly for security

@@ -14,6 +14,10 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
 from xgboost import XGBClassifier
+try:
+    from char_cnn import CharCNN
+except ImportError:
+    CharCNN = None
 
 # Evaluation
 from sklearn.model_selection import GroupShuffleSplit
@@ -251,7 +255,7 @@ def save_metrics(metrics: dict, filepath: str):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Train Phishing URL Detector")
     parser.add_argument('dataset', help="Path to the training CSV")
-    parser.add_argument('--model', default="rf", help="Model to train: rf | logreg | rf_calibrated")
+    parser.add_argument('--model', default="rf", help="Model to train: rf | logreg | rf_calibrated | char_cnn")
     parser.add_argument('--out-dir', default="ml/runs", help="Directory where model + metrics are saved")
     parser.add_argument('--out', help="Path to save the model", default=None)
     parser.add_argument('--metrics-out', default=None, help="Path to save metrics JSON")
@@ -279,6 +283,32 @@ if __name__ == "__main__":
 
     df_train = df.iloc[train_idx].reset_index(drop=True)
     df_test  = df.iloc[test_idx].reset_index(drop=True)
+
+    if args.model == "char_cnn":
+        if CharCNN is None:
+            raise ImportError("CharCNN requires tensorflow. Please install it.")
+        
+        print("Training Char-CNN (Deep Learning)...")
+        # Standardize URLs for CNN (no feature extraction needed)
+        urls_train = df_train["url"].astype(str).tolist()
+        y_train = df_train["label"].astype(int).tolist()
+        urls_test = df_test["url"].astype(str).tolist()
+        y_test = df_test["label"].astype(int).tolist()
+
+        cnn = CharCNN()
+        cnn.build_model()
+        cnn.train(urls_train, y_train, epochs=3, batch_size=64)
+        
+        # Evaluate
+        print("\nEvaluating Char-CNN...")
+        y_pred_prob = cnn.predict(urls_test)
+        y_pred = (y_pred_prob > 0.5).astype(int)
+
+        run_dir = os.path.join(args.out_dir, "char_cnn")
+        os.makedirs(run_dir, exist_ok=True)
+        cnn.save(run_dir)
+        print(f"Char-CNN saved to {run_dir}")
+        exit(0)
 
     X_train, y_train = extract_features_from_df(df_train, cache_path="ml/data/features_train_cache.csv")
     X_test,  y_test  = extract_features_from_df(df_test,  cache_path="ml/data/features_test_cache.csv")
