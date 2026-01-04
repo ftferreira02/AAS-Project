@@ -6,6 +6,7 @@ import os
 import json
 from datetime import datetime
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.calibration import CalibratedClassifierCV
 from sklearn.model_selection import train_test_split, GroupShuffleSplit
 from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import StandardScaler
@@ -201,25 +202,37 @@ def train_model(X_train, y_train, X_test, y_test, model_name="rf"):
 
     report_str = classification_report(y_test, y_pred)
     report_dict = classification_report(y_test, y_pred, output_dict=True)
-    acc = accuracy_score(y_test, y_pred)
-    tn, fp, fn, tp = confusion_matrix(y_test, y_pred).ravel()
-
-    print("\nModel Performance:")
-    print(report_str)
     
-    print("\nConfusion Matrix:")
-    print(f"True Negatives: {tn}")
-    print(f"False Positives: {fp}")
-    print(f"False Negatives: {fn}")
-    print(f"True Positives: {tp}")
+    # Calibrate probabilities
+    # Random Forest probabilities are not naturally calibrated.
+    # Isotonic calibration maps raw scores to true probabilities.
+    print("Calibrating model probabilities...")
+    rf = RandomForestClassifier(n_estimators=100, random_state=42, n_jobs=-1)
+    calibrated_clf = CalibratedClassifierCV(rf, method='isotonic', cv=3)
+    calibrated_clf.fit(X_train, y_train)
+    
+    # Re-evaluate performance with the calibrated model
+    y_pred_calibrated = calibrated_clf.predict(X_test)
+    report_str_calibrated = classification_report(y_test, y_pred_calibrated)
+    report_dict_calibrated = classification_report(y_test, y_pred_calibrated, output_dict=True)
+    acc_calibrated = accuracy_score(y_test, y_pred_calibrated)
+    tn_calibrated, fp_calibrated, fn_calibrated, tp_calibrated = confusion_matrix(y_test, y_pred_calibrated).ravel()
 
+    print("\nCalibrated Model Performance:")
+    print(report_str_calibrated)
+    
+    print("\nCalibrated Confusion Matrix:")
+    print(f"True Negatives: {tn_calibrated}")
+    print(f"False Positives: {fp_calibrated}")
+    print(f"False Negatives: {fn_calibrated}")
+    print(f"True Positives: {tp_calibrated}")
     
     metrics = {
         "model": model_name,
         "timestamp_utc": datetime.utcnow().isoformat() + "Z",
         "train_samples": int(len(y_train)),
         "test_samples": int(len(y_test)),
-        "accuracy": float(acc),
+        "accuracy": float(acc_calibrated), # Use calibrated accuracy
         "per_class": {
             "0": {
                 "precision": float(report_dict["0"]["precision"]),
@@ -246,7 +259,7 @@ def train_model(X_train, y_train, X_test, y_test, model_name="rf"):
             "f1": float(report_dict["weighted avg"]["f1-score"]),
             "support": int(report_dict["weighted avg"]["support"]),
         },
-        "confusion_matrix": {"tn": int(tn), "fp": int(fp), "fn": int(fn), "tp": int(tp)},
+        "confusion_matrix": {"tn": int(tn_calibrated), "fp": int(fp_calibrated), "fn": int(fn_calibrated), "tp": int(tp_calibrated)},
     }
 
     return model, metrics

@@ -1,9 +1,9 @@
 {
   "model": "rf",
-  "timestamp_utc": "2026-01-04T20:19:34.980880Z",
+  "timestamp_utc": "2026-01-04T20:32:57.497345Z",
   "train_samples": 362401,
   "test_samples": 87771,
-  "accuracy": 0.9947135158537558,
+  "accuracy": 0.99352861423477,
   "per_class": {
     "0": {
       "precision": 0.9946498912340526,
@@ -31,9 +31,9 @@
     "support": 87771
   },
   "confusion_matrix": {
-    "tn": 67672,
-    "fp": 100,
-    "fn": 364,
-    "tp": 19635
+    "tn": 67722,
+    "fp": 50,
+    "fn": 518,
+    "tp": 19481
   }
 }
