@@ -1,33 +1,41 @@
-False Negative Analysis
-We analyzed the phishing URLs that the Hybrid System missed (False Negatives). These are dangerous because they allow a user to visit a malicious site.
+# False Negative Analysis
 
-key Findings
-The "missed" sites generally fall into three categories:
+We analyzed the phishing URLs that the Hybrid System missed (False Negatives). These "misses" allow a user to visit a malicious site without a warning.
 
-1. The "Split Verdict" (Model Disagreement)
-In these cases, one model correctly flagged the site, but the other "voted it down" because the weights (0.4 / 0.6) weren't enough to push it over 0.60.
+## Key Findings
+The ~695 missed sites generally fall into three distinct categories:
 
-URL: https://sercure-pagealert.cf/?checkpoint=facebook.com/standart
-CNN Score: 0.57 (Warning) -> Correctly saw "sercure" and "facebook".
-Lexical Score: 0.35 (Safe) -> Incorrectly trusted the .cf domain or lack of other features.
-Final: 0.48 (Safe).
-Fix: Increasing the CNN weight or using a "Max" policy (instead of Average) would catch this, but might increase False Positives.
-2. Compromised Legitimate Sites
-The hardest category. These are real, high-reputation domains (like blogs or small business sites) that were hacked to host a phishing page.
+### 1. The "Split Verdict" (Model Disagreement)
+**Scenario**: One model flags it, but the other votes it down.
+*   **Example**: `https://sercure-pagealert.cf/?checkpoint=facebook.com/standart`
+    *   **CNN Score**: `0.57` (Warning) -> Saw "sercure" and "facebook".
+    *   **Lexical Score**: `0.35` (Safe) -> Trusted the `.cf` domain / lack of URL features.
+    *   **Final Score**: `0.48` (Safe).
+*   **Fix**: Increasing CNN weight or using a "Max" policy (`max(lex, cnn)`) would catch these but drastically increase False Positives.
 
-URL: https://www.boozyfoodie.co.za/en-US/mpp/security-check-IDPP00C452/
-Scores: Lexical 0.00, CNN 0.00.
-Why: boozyfoodie.co.za is a real food blog. The domain age, reputation, and character patterns look completely benign. The phishing content is deep in the subfolder /mpp/....
-Solution: URL-only models struggle here. We would need Content Analysis (scanning the page HTML for "Login" forms) to catch this.
-3. "Clean" Phishing URLs
-URLs that legitimately look safe and don't use obvious tricks (no typosquatting, no "secure-login" keywords).
+### 2. Compromised Legitimate Sites (The Hardest Case)
+**Scenario**: High-reputation legitimate domains hacked to host phishing content.
+*   **Example**: `https://www.boozyfoodie.co.za/en-US/mpp/security-check-IDPP00C452/`
+*   **Scores**: Lexical `0.00`, CNN `0.00`.
+*   **Why Missed?**:
+    *   Domain (`boozyfoodie.co.za`) is a real, high-reputation food blog.
+    *   URL structure is standard.
+    *   Phishing content is hidden deep in subfolders.
+*   **Solution**: **HTML Content Analysis**. We must scan the page content (e.g., looking for "Login" forms on a blog) to detect this. URL analysis is insufficient.
 
-URL: https://chinabitmain.com/
-Scores: Lexical 0.30, CNN 0.10.
-Why: It looks like a standard business domain. "China" and "Bitmain" are legitimate words.
-URL: https://pigce.edu.in/id/
-Why: An educational domain (.edu.in). Likely a compromised university site used to host a phishing page.
-Summary
-Total Misses: ~695 out of 20,000 phishing sites (3.5% miss rate).
-Dominant Cause: Compromised legitimate domains (WordPress hacks, etc.).
-Mitigation: The URLs themselves are "safe"; the content is not. To fix this in the future, the extension should likely inspect the HTML content (e.g., look for password fields on a non-password domain) in addition to just the URL.
+### 3. "Clean" Phishing URLs
+**Scenario**: Phishing sites that strictly mimic legitimate business domains without obvious tricks.
+*   **Example**: `https://chinabitmain.com/`
+    *   **Analysis**: Looks like a standard business URL. "China" and "Bitmain" are legitimate words.
+*   **Example**: `https://pigce.edu.in/id/`
+    *   **Analysis**: Educational domain (`.edu.in`), likely compromised.
+
+## Summary
+
+| Category | Frequency | Difficulty to Fix | Proposed Solution |
+| :--- | :--- | :--- | :--- |
+| **Split Verdict** | Moderate | Low | Adjust ensemble weights (risk of higher FP). |
+| **Compromised Site** | High | High | Implement HTML Content Scanning. |
+| **Clean Phishing** | Low | High | Domain Age / WHOIS Lookup integration. |
+
+**Verdict**: The current system has reached the limit of **URL-only analysis**. To improve beyond 96.5% recall, future versions must inspect page content.
