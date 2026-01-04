@@ -44,6 +44,12 @@ class FeatureExtractor:
         # Advanced Features
         features['count_subdomains'] = len(self.domain_info.subdomain.split('.')) if self.domain_info.subdomain else 0
         features['is_punycode'] = 1 if 'xn--' in self.url else 0
+
+        # Normalized Features (New)
+        # Focus on hostname structure rather than raw length bias
+        features['subdomain_dot_count'] = self.domain_info.subdomain.count('.')
+        features['hostname_len'] = len(self.parsed.netloc)
+        features['param_ratio'] = len(self.parsed.query) / len(self.url) if len(self.url) > 0 else 0
         
         suspicious_keywords = ['login', 'verify', 'update', 'secure', 'account', 'password', 'confirm', 'signin', 'banking']
         u = self.url.lower()
