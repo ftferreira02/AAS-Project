@@ -14,137 +14,201 @@ chrome.runtime.sendMessage({ action: "checkUrl", url: currentUrl }, (response) =
 });
 
 function showWarning(data) {
-    // Prevent duplicate overlays
-    if (document.getElementById('phish-detector-overlay')) return;
+    if (document.getElementById('phish-detector-host')) return;
 
-    // Determine Style based on Level
+    // --- Configuration ---
     const isWarning = data.level === 'warning';
-    const bgColor = isWarning ? 'rgba(255, 152, 0, 0.95)' : 'rgba(200, 0, 0, 0.95)';
-    const titleColor = isWarning ? '#e65100' : '#d32f2f';
-    const titleText = isWarning ? '⚠️ Suspicious Site Detected' : '⚠️ Phishing Detected';
-    const proceedText = isWarning ? 'Proceed with Caution' : 'Proceed Anyway (Unsafe)';
-    const proceedColor = isWarning ? '#fb8c00' : '#ef5350';
 
-    // Create overlay container
+    // Modern Color Palette (Tailwind-inspired)
+    const colors = {
+        overlay: 'rgba(0, 0, 0, 0.6)', // Darker, blurred overlay
+        cardBg: '#ffffff',
+        textPrimary: '#111827',
+        textSecondary: '#4b5563',
+
+        // Semantic Colors
+        danger: '#ef4444',     // Red-500
+        warning: '#f59e0b',    // Amber-500
+        success: '#10b981',    // Emerald-500
+
+        // Gradients
+        dangerGrad: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+        warningGrad: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+        successGrad: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+    };
+
+    const config = {
+        icon: isWarning ? '⚠️' : '🚨',
+        title: isWarning ? 'Suspicious Site Detected' : 'Phishing Threat Detected',
+        message: `This site checks out as <strong>${isWarning ? 'suspicious' : 'unsafe'}</strong>. Use caution.`,
+        themeColor: isWarning ? colors.warning : colors.danger,
+        themeGrad: isWarning ? colors.warningGrad : colors.dangerGrad
+    };
+
+    // --- DOM Construction ---
+    const host = document.createElement('div');
+    host.id = 'phish-detector-host';
+    document.body.appendChild(host);
+
+    const shadow = host.attachShadow({ mode: 'closed' });
+
+    // 1. Backdrop Overlay (Glassmorphism)
     const overlay = document.createElement('div');
-    overlay.id = 'phish-detector-overlay';
     Object.assign(overlay.style, {
         position: 'fixed',
-        top: '0',
-        left: '0',
-        width: '100%',
-        height: '100%',
-        backgroundColor: bgColor,
-        zIndex: '999999',
+        top: '0', left: '0', width: '100vw', height: '100vh',
+        backgroundColor: colors.overlay,
+        backdropFilter: 'blur(8px)', // Glass effect
+        zIndex: '2147483647',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji"',
+        opacity: '0',
+        transition: 'opacity 0.3s ease-out'
+    });
+
+    // 2. Main Card
+    const card = document.createElement('div');
+    Object.assign(card.style, {
+        background: colors.cardBg,
+        width: '90%',
+        maxWidth: '480px',
+        borderRadius: '16px',
+        padding: '32px',
+        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+        textAlign: 'center',
+        transform: 'scale(0.95)',
+        transition: 'transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)'
+    });
+
+    // Animate In
+    requestAnimationFrame(() => {
+        overlay.style.opacity = '1';
+        card.style.transform = 'scale(1)';
+    });
+
+    // --- Content ---
+
+    // Icon Wrapper
+    const iconWrapper = document.createElement('div');
+    Object.assign(iconWrapper.style, {
+        fontSize: '48px',
+        marginBottom: '16px',
+        animation: 'bounce 1s infinite alternate' // Subtle bounce
+    });
+    iconWrapper.textContent = config.icon;
+    card.appendChild(iconWrapper);
+
+    // Title
+    const h1 = document.createElement('h1');
+    h1.textContent = config.title;
+    Object.assign(h1.style, {
+        color: colors.textPrimary,
+        fontSize: '24px',
+        fontWeight: '700',
+        margin: '0 0 12px 0',
+        lineHeight: '1.2'
+    });
+    card.appendChild(h1);
+
+    // Description
+    const p = document.createElement('p');
+    p.innerHTML = `The URL <code style="background:#f3f4f6; padding:2px 4px; border-radius:4px; color:${colors.textPrimary}; font-size: 0.9em; word-break: break-all;">${data.url}</code> has been flagged. Confidence: <strong>${(data.confidence * 100).toFixed(1)}%</strong>`;
+    Object.assign(p.style, {
+        color: colors.textSecondary,
+        fontSize: '16px',
+        lineHeight: '1.6',
+        margin: '0 0 32px 0'
+    });
+    card.appendChild(p);
+
+    // --- Actions ---
+    const btnGroup = document.createElement('div');
+    Object.assign(btnGroup.style, {
         display: 'flex',
         flexDirection: 'column',
-        justifyContent: 'center',
-        alignItems: 'center',
-        color: 'white',
-        fontFamily: 'Arial, sans-serif',
-        textAlign: 'center'
+        gap: '12px'
     });
 
-    // Create Content Box
-    const box = document.createElement('div');
-    Object.assign(box.style, {
-        background: 'white',
-        color: 'black',
-        padding: '40px',
-        borderRadius: '10px',
-        maxWidth: '600px',
-        boxShadow: '0 0 20px rgba(0,0,0,0.5)'
-    });
+    // Helper: Button Creator
+    const createButton = (text, type, handler) => {
+        const btn = document.createElement('button');
+        btn.textContent = text;
+        const baseStyle = {
+            width: '100%',
+            padding: '12px 20px',
+            borderRadius: '8px',
+            fontSize: '16px',
+            fontWeight: '600',
+            cursor: 'pointer',
+            border: 'none',
+            transition: 'transform 0.1s, opacity 0.2s',
+            outline: 'none'
+        };
 
-    // Header
-    const h1 = document.createElement('h1');
-    h1.textContent = titleText;
-    h1.style.color = titleColor;
-    h1.style.marginTop = '0';
-    box.appendChild(h1);
-
-    // Message
-    const p1 = document.createElement('p');
-    p1.style.fontSize = '18px';
-    const strongUrl = document.createElement('strong');
-    strongUrl.textContent = data.url; // Safe text insertion
-    p1.appendChild(document.createTextNode('The URL '));
-    p1.appendChild(strongUrl);
-    p1.appendChild(document.createTextNode(' has been flagged as ' + (isWarning ? 'suspicious' : 'potential phishing') + '.'));
-    box.appendChild(p1);
-
-    // Confidence
-    const p2 = document.createElement('p');
-    const strongConf = document.createElement('strong');
-    strongConf.textContent = 'Confidence: ';
-    p2.appendChild(strongConf);
-    p2.appendChild(document.createTextNode((data.confidence * 100).toFixed(1) + '%'));
-    box.appendChild(p2);
-
-    // Buttons Container
-    const btnContainer = document.createElement('div');
-    btnContainer.style.marginTop = '30px';
-
-    // Proceed Button
-    const proceedBtn = document.createElement('button');
-    proceedBtn.textContent = proceedText;
-    Object.assign(proceedBtn.style, {
-        background: proceedColor,
-        color: 'white',
-        border: 'none',
-        padding: '10px 20px',
-        fontSize: '16px',
-        borderRadius: '5px',
-        cursor: 'pointer'
-    });
-    proceedBtn.onclick = () => overlay.remove();
-    btnContainer.appendChild(proceedBtn);
-
-    // Trust Button
-    const trustBtn = document.createElement('button');
-    trustBtn.textContent = 'Trust this Domain';
-    Object.assign(trustBtn.style, {
-        background: '#ffa000',
-        color: 'white',
-        border: 'none',
-        padding: '10px 20px',
-        fontSize: '16px',
-        borderRadius: '5px',
-        cursor: 'pointer',
-        marginLeft: '10px'
-    });
-    trustBtn.onclick = () => {
-        const domain = new URL(window.location.href).hostname;
-        chrome.runtime.sendMessage({ action: "addToAllowlist", domain: domain }, () => {
-            alert("Domain added to allowlist. Please reload.");
-            overlay.remove();
-        });
-    };
-    btnContainer.appendChild(trustBtn);
-
-    // Back Button (Smarter)
-    const backBtn = document.createElement('button');
-    backBtn.textContent = 'Go Back to Safety';
-    Object.assign(backBtn.style, {
-        background: '#4caf50',
-        color: 'white',
-        border: 'none',
-        padding: '10px 20px',
-        fontSize: '16px',
-        borderRadius: '5px',
-        cursor: 'pointer',
-        marginLeft: '10px'
-    });
-    backBtn.onclick = () => {
-        if (window.history.length > 1) {
-            window.history.back();
-        } else {
-            window.location.href = "https://www.google.com";
+        if (type === 'primary') {
+            Object.assign(btn.style, baseStyle, {
+                background: colors.successGrad,
+                color: 'white',
+                boxShadow: '0 4px 6px -1px rgba(16, 185, 129, 0.4)'
+            });
+        } else if (type === 'danger') {
+            Object.assign(btn.style, baseStyle, {
+                background: 'transparent',
+                border: `1px solid ${colors.danger}`,
+                color: colors.danger
+            });
+        } else if (type === 'warning') {
+            Object.assign(btn.style, baseStyle, {
+                background: 'transparent',
+                border: `1px solid ${colors.warning}`,
+                color: colors.warning
+            });
+        } else { // Ghost / Link
+            Object.assign(btn.style, baseStyle, {
+                background: 'transparent',
+                color: colors.textSecondary,
+                fontSize: '14px',
+                fontWeight: '500'
+            });
         }
-    };
-    btnContainer.appendChild(backBtn);
 
-    box.appendChild(btnContainer);
-    overlay.appendChild(box);
-    document.body.appendChild(overlay);
+        btn.onmousedown = () => btn.style.transform = 'scale(0.98)';
+        btn.onmouseup = () => btn.style.transform = 'scale(1)';
+        btn.onmouseenter = () => btn.style.opacity = '0.9';
+        btn.onmouseleave = () => btn.style.opacity = '1';
+        btn.onclick = handler;
+        return btn;
+    };
+
+    // 1. Primary Action: Go Back (Safest)
+    const btnBack = createButton('Go Back to Safety', 'primary', () => {
+        if (window.history.length > 1) window.history.back();
+        else window.location.href = "https://www.google.com";
+    });
+    btnGroup.appendChild(btnBack);
+
+    // 2. Secondary Action: Proceed (Dangerous)
+    const btnProceed = createButton(
+        isWarning ? 'Proceed with Caution' : 'I understand the risks, proceed',
+        isWarning ? 'warning' : 'danger',
+        () => host.remove()
+    );
+    btnGroup.appendChild(btnProceed);
+
+    // 3. Tertiary Action: Trust
+    const btnTrust = createButton('Don\'t ask again for this site', 'ghost', () => {
+        const domain = new URL(data.url).hostname;
+        // eslint-disable-next-line no-undef
+        chrome.runtime.sendMessage({ action: "addToAllowlist", domain: domain }, () => {
+            alert(`"${domain}" added to allowlist.`);
+            host.remove();
+        });
+    });
+    btnGroup.appendChild(btnTrust);
+
+    card.appendChild(btnGroup);
+    overlay.appendChild(card);
+    shadow.appendChild(overlay);
 }
