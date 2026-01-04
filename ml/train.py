@@ -7,6 +7,10 @@ import json
 from datetime import datetime
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split, GroupShuffleSplit
+from sklearn.linear_model import LogisticRegression
+from sklearn.preprocessing import StandardScaler
+from sklearn.pipeline import Pipeline
+from sklearn.calibration import CalibratedClassifierCV
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 from features import FeatureExtractor
 from tqdm import tqdm
@@ -156,16 +160,45 @@ def extract_features_from_df(df, cache_path):
 #     X.to_csv(cache_path, index=False)
     
 #     return X, labels
+def build_model(model_name: str):
+    model_name = model_name.lower()
 
-def train_model(X_train, y_train, X_test, y_test, model_name="random_forest"):
+    if model_name == "rf":
+        return RandomForestClassifier(n_estimators=100, random_state=42, n_jobs=-1)
+
+    if model_name == "logreg":
+        return Pipeline([
+            ("scaler", StandardScaler()),
+            ("clf", LogisticRegression(
+                max_iter=2000,
+                class_weight="balanced",
+                n_jobs=-1,
+                random_state=42
+            ))
+        ])
+
+    if model_name == "rf_calibrated":
+        base = RandomForestClassifier(n_estimators=200, random_state=42, n_jobs=-1)
+        return CalibratedClassifierCV(base_estimator=base, method="isotonic", cv=3)
+
+    raise ValueError(f"Unknown model '{model_name}'. Use: rf | logreg | rf_calibrated")
+
+def train_model(X_train, y_train, X_test, y_test, model_name="rf"):
     print("Training Random Forest model...")
     # Stratified split ensures equal proportion of classes in train/test
     # X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
     
-    rf = RandomForestClassifier(n_estimators=100, random_state=42, n_jobs=-1)
-    rf.fit(X_train, y_train)
+    model = build_model(model_name)
+    print(f"Training model: {model_name}")
+    model.fit(X_train, y_train)
     
-    y_pred = rf.predict(X_test)
+    y_pred = model.predict(X_test)
+
+    # probability (if supported)
+    proba = None
+    if hasattr(model, "predict_proba"):
+        proba = model.predict_proba(X_test)[:, 1]
+
     report_str = classification_report(y_test, y_pred)
     report_dict = classification_report(y_test, y_pred, output_dict=True)
     acc = accuracy_score(y_test, y_pred)
@@ -216,7 +249,7 @@ def train_model(X_train, y_train, X_test, y_test, model_name="random_forest"):
         "confusion_matrix": {"tn": int(tn), "fp": int(fp), "fn": int(fn), "tp": int(tp)},
     }
 
-    return rf, metrics
+    return model, metrics
 
 def save_model(model, filepath=None):
     if filepath is None:
@@ -236,9 +269,10 @@ def save_metrics(metrics: dict, filepath: str):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Train Phishing URL Detector")
     parser.add_argument('dataset', help="Path to the training CSV")
+    parser.add_argument('--model', default="rf", help="Model to train: rf | logreg | rf_calibrated")
+    parser.add_argument('--out-dir', default="ml/runs", help="Directory where model + metrics are saved")
     parser.add_argument('--out', help="Path to save the model", default=None)
-    parser.add_argument('--metrics-out', default="ml/data/metrics.json", help="Path to save metrics JSON")
-    parser.add_argument('--model-name', default="random_forest", help="Logical model name to store in metrics")
+    parser.add_argument('--metrics-out', default=None, help="Path to save metrics JSON")
 
     args = parser.parse_args()
     
@@ -270,6 +304,13 @@ if __name__ == "__main__":
     print(f"Train rows: {len(df_train)} | Test rows: {len(df_test)}")
     print(f"Unique hostnames train: {df_train['hostname'].nunique()} | test: {df_test['hostname'].nunique()}")
 
-    model, metrics = train_model(X_train, y_train, X_test, y_test, model_name=args.model_name)
-    save_model(model, args.out)
-    save_metrics(metrics, args.metrics_out)
+    model, metrics = train_model(X_train, y_train, X_test, y_test, model_name=args.model)
+    run_dir = os.path.join(args.out_dir, args.model)
+    os.makedirs(run_dir, exist_ok=True)
+
+    model_path = os.path.join(run_dir, "model.pkl")
+    metrics_path = os.path.join(run_dir, "metrics.json")
+
+    save_model(model, model_path)
+    save_metrics(metrics, metrics_path)
+
