@@ -5,13 +5,18 @@ import argparse
 import os
 import json
 from datetime import datetime
+
+# Models
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.calibration import CalibratedClassifierCV
 from sklearn.model_selection import train_test_split, GroupShuffleSplit
 from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
-from sklearn.calibration import CalibratedClassifierCV
+from xgboost import XGBClassifier
+
+# Evaluation
+from sklearn.model_selection import GroupShuffleSplit
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 from features import FeatureExtractor
 from tqdm import tqdm
@@ -30,12 +35,7 @@ def load_data(filepath):
     if "Unnamed: 0" in df.columns:
         df = df.drop(columns=["Unnamed: 0"])
 
-    # Basic cleaning - adjust based on actual dataset inspection
-    # Common column names in phishing datasets: 'url', 'phishing', 'status', 'label'
-    
-    # Example for typical datasets:
-    # Updated Logic: Treat 'benign' as 0, everything else (phishing, defacement, malware) as 1
-    # Updated Logic: Treat 'benign' as 0, everything else (phishing, defacement, malware) as 1
+    # Standardize label column to 0 (safe) and 1 (unsafe)
     if 'status' in df.columns:
         df['label'] = df['status'].astype(str).str.lower().apply(lambda x: 0 if x == 'benign' else 1).astype(int)
     elif 'type' in df.columns:
@@ -122,50 +122,23 @@ def extract_features_from_df(df, cache_path):
     X = out.drop(columns=["url", "label"])
     return X, y
 
-# def extract_features_from_df(df, cache_path='ml/data/features_cache.csv'):
-#     """
-#     Apply FeatureExtractor to every URL in the dataframe.
-#     Uses caching to speed up subsequent runs.
-#     """
-#     if os.path.exists(cache_path):
-#         print(f"Loading features from cache: {cache_path}")
-#         try:
-#             cached_X = pd.read_csv(cache_path)
-#             if len(cached_X) == len(df):
-#                 return cached_X, df['label']
-#             else:
-#                 print(f"Cache mismatch (Cache: {len(cached_X)}, Data: {len(df)}). Regenerating...")
-#         except Exception as e:
-#             print(f"Error loading cache: {e}. Regenerating...")
-        
-#     print("Extracting features (this may take a while)...")
-    
-#     features_list = []
-#     labels = []
-    
-#     for index, row in tqdm(df.iterrows(), total=df.shape[0], desc="Extracting"):
-#         try:
-#             url = row['url']
-#             extractor = FeatureExtractor(url)
-#             features = extractor.get_features()
-#             features_list.append(features)
-#             labels.append(row['label'])
-#         except Exception as e:
-#             # Skip malformed URLs
-#             continue
-    
-#     X = pd.DataFrame(features_list)
-    
-#     # Save cache
-#     print(f"Saving features to cache: {cache_path}")
-#     X.to_csv(cache_path, index=False)
-    
-#     return X, labels
 def build_model(model_name: str):
     model_name = model_name.lower()
 
     if model_name == "rf":
         return RandomForestClassifier(n_estimators=100, random_state=42, n_jobs=-1)
+
+    if model_name == "xgb":
+        # Recommended by research for higher accuracy on lexical features
+        return XGBClassifier(
+            n_estimators=150, 
+            learning_rate=0.1, 
+            max_depth=10, 
+            use_label_encoder=False, 
+            eval_metric='logloss',
+            random_state=42,
+            n_jobs=-1
+        )
 
     if model_name == "logreg":
         return Pipeline([
@@ -182,10 +155,21 @@ def build_model(model_name: str):
         base = RandomForestClassifier(n_estimators=200, random_state=42, n_jobs=-1)
         return CalibratedClassifierCV(estimator=base, method="isotonic", cv=3)
 
-    raise ValueError(f"Unknown model '{model_name}'. Use: rf | logreg | rf_calibrated")
+    if model_name == "xgb_calibrated":
+        base = XGBClassifier(
+            n_estimators=150, 
+            learning_rate=0.1, 
+            max_depth=10, 
+            use_label_encoder=False, 
+            eval_metric='logloss',
+            random_state=42,
+            n_jobs=-1
+        )
+        return CalibratedClassifierCV(estimator=base, method="isotonic", cv=3)
+
+    raise ValueError(f"Unknown model '{model_name}'. Use: rf | xgb | logreg | rf_calibrated | xgb_calibrated")
 
 def train_model(X_train, y_train, X_test, y_test, model_name="rf"):
-    print("Training Random Forest model...")
     # Stratified split ensures equal proportion of classes in train/test
     # X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
     
@@ -194,45 +178,28 @@ def train_model(X_train, y_train, X_test, y_test, model_name="rf"):
     model.fit(X_train, y_train)
     
     y_pred = model.predict(X_test)
-
-    # probability (if supported)
-    proba = None
-    if hasattr(model, "predict_proba"):
-        proba = model.predict_proba(X_test)[:, 1]
-
+    
     report_str = classification_report(y_test, y_pred)
     report_dict = classification_report(y_test, y_pred, output_dict=True)
     
-    # Calibrate probabilities
-    # Random Forest probabilities are not naturally calibrated.
-    # Isotonic calibration maps raw scores to true probabilities.
-    print("Calibrating model probabilities...")
-    rf = RandomForestClassifier(n_estimators=100, random_state=42, n_jobs=-1)
-    calibrated_clf = CalibratedClassifierCV(rf, method='isotonic', cv=3)
-    calibrated_clf.fit(X_train, y_train)
-    
-    # Re-evaluate performance with the calibrated model
-    y_pred_calibrated = calibrated_clf.predict(X_test)
-    report_str_calibrated = classification_report(y_test, y_pred_calibrated)
-    report_dict_calibrated = classification_report(y_test, y_pred_calibrated, output_dict=True)
-    acc_calibrated = accuracy_score(y_test, y_pred_calibrated)
-    tn_calibrated, fp_calibrated, fn_calibrated, tp_calibrated = confusion_matrix(y_test, y_pred_calibrated).ravel()
+    acc = accuracy_score(y_test, y_pred)
+    tn, fp, fn, tp = confusion_matrix(y_test, y_pred).ravel()
 
-    print("\nCalibrated Model Performance:")
-    print(report_str_calibrated)
+    print("\nModel Performance:")
+    print(report_str)
     
-    print("\nCalibrated Confusion Matrix:")
-    print(f"True Negatives: {tn_calibrated}")
-    print(f"False Positives: {fp_calibrated}")
-    print(f"False Negatives: {fn_calibrated}")
-    print(f"True Positives: {tp_calibrated}")
+    print("\nConfusion Matrix:")
+    print(f"True Negatives: {tn}")
+    print(f"False Positives: {fp}")
+    print(f"False Negatives: {fn}")
+    print(f"True Positives: {tp}")
     
     metrics = {
         "model": model_name,
         "timestamp_utc": datetime.utcnow().isoformat() + "Z",
         "train_samples": int(len(y_train)),
         "test_samples": int(len(y_test)),
-        "accuracy": float(acc_calibrated), # Use calibrated accuracy
+        "accuracy": float(acc),
         "per_class": {
             "0": {
                 "precision": float(report_dict["0"]["precision"]),
@@ -259,7 +226,7 @@ def train_model(X_train, y_train, X_test, y_test, model_name="rf"):
             "f1": float(report_dict["weighted avg"]["f1-score"]),
             "support": int(report_dict["weighted avg"]["support"]),
         },
-        "confusion_matrix": {"tn": int(tn_calibrated), "fp": int(fp_calibrated), "fn": int(fn_calibrated), "tp": int(tp_calibrated)},
+        "confusion_matrix": {"tn": int(tn), "fp": int(fp), "fn": int(fn), "tp": int(tp)},
     }
 
     return model, metrics

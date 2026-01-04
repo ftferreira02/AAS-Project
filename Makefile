@@ -10,7 +10,7 @@ install:
 	$(PIP) install -r api/requirements.txt
 
 train:
-	$(PYTHON) ml/train.py ml/data/dataset2.csv
+	./venv/bin/python3 ml/train.py ml/data/dataset2.csv --model xgb_calibrated
 
 run:
 	$(PYTHON) api/app.py
