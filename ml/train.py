@@ -179,7 +179,7 @@ def build_model(model_name: str):
 
     if model_name == "rf_calibrated":
         base = RandomForestClassifier(n_estimators=200, random_state=42, n_jobs=-1)
-        return CalibratedClassifierCV(base_estimator=base, method="isotonic", cv=3)
+        return CalibratedClassifierCV(estimator=base, method="isotonic", cv=3)
 
     raise ValueError(f"Unknown model '{model_name}'. Use: rf | logreg | rf_calibrated")
 

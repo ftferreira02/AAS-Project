@@ -51,11 +51,24 @@ class FeatureExtractor:
         path = self.parsed.path.lower()
         query = self.parsed.query.lower()
 
-        features['kw_in_domain'] = 1 if any(kw in host for kw in suspicious_keywords) else 0
-        features['kw_in_path']   = 1 if any(kw in path for kw in suspicious_keywords) else 0
-        features['kw_in_query']  = 1 if any(kw in query for kw in suspicious_keywords) else 0
-        features['kw_count']     = sum(u.count(kw) for kw in suspicious_keywords)
-        # features['has_suspicious_keyword'] = 1 if any(kw in self.url.lower() for kw in suspicious_keywords) else 0
+        # Split host into parts using tldextract
+        registered_domain = (self.domain_info.domain or "").lower()          # e.g., "slbenfica"
+        subdomain = (self.domain_info.subdomain or "").lower()               # e.g., "mybenfica"
+        suffix = (self.domain_info.suffix or "").lower()                     # e.g., "pt"
+
+        # More precise keyword location features
+        features['kw_in_netloc'] = 1 if any(kw in host for kw in suspicious_keywords) else 0
+        features['kw_in_registered_domain'] = 1 if any(kw in registered_domain for kw in suspicious_keywords) else 0
+        features['kw_in_subdomain'] = 1 if (subdomain and any(kw in subdomain for kw in suspicious_keywords)) else 0
+
+        # Keep the old names too if you want backwards compatibility (optional)
+        features['kw_in_domain'] = features['kw_in_netloc']
+
+        features['kw_in_path']  = 1 if any(kw in path for kw in suspicious_keywords) else 0
+        features['kw_in_query'] = 1 if any(kw in query for kw in suspicious_keywords) else 0
+
+        # Count total occurrences in full URL (same as before)
+        features['kw_count'] = sum(u.count(kw) for kw in suspicious_keywords)
         
         features['count_params'] = len(self.parsed.query.split('&')) if self.parsed.query else 0
         
@@ -64,7 +77,13 @@ class FeatureExtractor:
         features['domain_digit_ratio'] = sum(c.isdigit() for c in domain_str) / len(domain_str) if domain_str else 0
         
         # Complexity
-        features['entropy'] = self._calculate_entropy(self.url)
+        # Entropy split (more informative than entropy of full URL alone)
+        features['entropy_url'] = self._calculate_entropy(self.url)
+        features['entropy_host'] = self._calculate_entropy(self.parsed.netloc or "")
+        features['entropy_path_query'] = self._calculate_entropy((self.parsed.path or "") + "?" + (self.parsed.query or ""))
+
+        # Optional: keep old key name for compatibility (if you don't want to change downstream yet)
+        features['entropy'] = features['entropy_url']
 
         return features
 

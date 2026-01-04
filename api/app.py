@@ -5,8 +5,35 @@ import sys
 import os
 import pandas as pd
 
-MODEL_PATH = os.path.join(os.path.dirname(__file__), "..", "ml", "model.pkl")
+MODEL_PATH = os.environ.get(
+    "MODEL_PATH",
+    os.path.join(os.path.dirname(__file__), "..", "ml", "runs", "rf_calibrated", "model.pkl")
+)
 model = None
+
+def get_expected_feature_names(m):
+    # Plain estimators trained with pandas
+    if hasattr(m, "feature_names_in_"):
+        return list(m.feature_names_in_)
+
+    # Pipeline (e.g., scaler + logistic regression)
+    if hasattr(m, "named_steps"):
+        # try the last step (classifier)
+        last = list(m.named_steps.values())[-1]
+        if hasattr(last, "feature_names_in_"):
+            return list(last.feature_names_in_)
+
+    # CalibratedClassifierCV (new sklearn uses .estimator)
+    if hasattr(m, "estimator") and hasattr(m.estimator, "feature_names_in_"):
+        return list(m.estimator.feature_names_in_)
+
+    # Fallback for some calibrated objects
+    if hasattr(m, "calibrated_classifiers_") and m.calibrated_classifiers_:
+        base = m.calibrated_classifiers_[0].estimator
+        if hasattr(base, "feature_names_in_"):
+            return list(base.feature_names_in_)
+
+    return None
 
 def load_model():
     global model
@@ -54,6 +81,10 @@ def predict():
         # Convert to DataFrame for model
         input_df = pd.DataFrame([features])
         
+        expected = get_expected_feature_names(model)
+        if expected is not None:
+            input_df = input_df.reindex(columns=expected, fill_value=0)
+
         # Predict Probabilities
         # Class 0 = Safe, Class 1 = Phishing
         proba = model.predict_proba(input_df)[0]
