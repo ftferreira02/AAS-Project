@@ -16,9 +16,7 @@ setInterval(() => {
 // Listen for messages including allowlist updates
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === "checkUrl") {
-        // If from popup, sender.tab is undefined. We rely on onUpdated for badges usually, 
-        // or we can just return the data without badge update if no tabId.
-        const tabId = sender.tab ? sender.tab.id : undefined;
+        const tabId = request.tabId || (sender.tab ? sender.tab.id : undefined);
         handleCheckUrl(request.url, tabId).then(sendResponse);
         return true;
     } else if (request.action === "addToAllowlist") {
@@ -48,7 +46,10 @@ async function handleCheckUrl(url, tabId) {
         const { allowlist = [] } = await chrome.storage.local.get("allowlist");
         const domain = new URL(url).hostname;
         if (allowlist.includes(domain)) {
-            updateBadge(false, tabId); // Safe
+            if (tabId) {
+                chrome.action.setBadgeText({ text: "✓", tabId: tabId });
+                chrome.action.setBadgeBackgroundColor({ color: "#4caf50", tabId: tabId });
+            }
             return { is_phishing: false, feature_override: "User Allowed" };
         }
     } catch (e) { console.error(e); }
@@ -59,7 +60,7 @@ async function handleCheckUrl(url, tabId) {
         const entry = cache.get(url);
         if (now - entry.timestamp < CACHE_TTL_MS) {
             console.log("Returning cached result for:", url);
-            updateBadge(entry.result.is_phishing, tabId);
+            updateBadge(entry.result, tabId);
             return entry.result;
         } else {
             cache.delete(url);
@@ -68,7 +69,7 @@ async function handleCheckUrl(url, tabId) {
 
     // 2. Call API
     console.log("Calling API for:", url);
-    if (tabId !== undefined) {
+    if (tabId) {
         chrome.action.setBadgeText({ text: "...", tabId: tabId });
     }
 
@@ -92,9 +93,9 @@ async function handleCheckUrl(url, tabId) {
             result: data,
             timestamp: now
         });
-        updateBadge(data.is_phishing, tabId);
+        updateBadge(data, tabId);
 
-        return data;
+        return data; // { is_phishing: bool, confidence: float, ... }
 
     } catch (error) {
         console.error("Error:", error);
@@ -102,15 +103,17 @@ async function handleCheckUrl(url, tabId) {
     }
 }
 
-function updateBadge(isPhishing, tabId) {
-    // Only update badge if we have a valid tabId
-    if (tabId === undefined || tabId < 0) return;
+function updateBadge(data, tabId) {
+    if (!tabId) return; // Cannot update badge without tabId
 
-    if (isPhishing) {
+    if (data.level === "warning") {
+        chrome.action.setBadgeText({ text: "?", tabId: tabId });
+        chrome.action.setBadgeBackgroundColor({ color: "#ff9800", tabId: tabId }); // Orange
+    } else if (data.level === "unsafe" || (data.is_phishing && !data.level)) {
         chrome.action.setBadgeText({ text: "!", tabId: tabId });
-        chrome.action.setBadgeBackgroundColor({ color: "#d32f2f", tabId: tabId });
+        chrome.action.setBadgeBackgroundColor({ color: "#d32f2f", tabId: tabId }); // Red
     } else {
         chrome.action.setBadgeText({ text: "✓", tabId: tabId });
-        chrome.action.setBadgeBackgroundColor({ color: "#4caf50", tabId: tabId });
+        chrome.action.setBadgeBackgroundColor({ color: "#4caf50", tabId: tabId }); // Green
     }
 }
