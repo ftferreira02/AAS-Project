@@ -6,3 +6,4 @@ flask-cors
 gunicorn
 tqdm
 xgboost
+tensorflow

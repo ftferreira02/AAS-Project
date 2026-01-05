@@ -5,10 +5,7 @@ import sys
 import os
 import pandas as pd
 
-MODEL_PATH = os.environ.get(
-    "MODEL_PATH",
-    os.path.join(os.path.dirname(__file__), "..", "ml", "model.pkl")
-)
+MODEL_PATH = os.path.join(os.path.dirname(__file__), "..", "ml", "runs", "xgb_calibrated", "model.pkl")
 CNN_PATH = os.path.join(os.path.dirname(__file__), "..", "ml", "runs", "char_cnn")
 model = None
 cnn_model = None
@@ -39,9 +36,17 @@ def get_expected_feature_names(m):
 
 def load_model():
     global model
-    if model is None and os.path.exists(MODEL_PATH):
-        with open(MODEL_PATH, "rb") as f:
-            model = pickle.load(f)
+    print(f"DEBUG: Attempting to load model from {os.path.abspath(MODEL_PATH)}")
+    if model is None:
+        if os.path.exists(MODEL_PATH):
+            try:
+                with open(MODEL_PATH, "rb") as f:
+                    model = pickle.load(f)
+                print("DEBUG: Model loaded successfully.")
+            except Exception as e:
+                print(f"DEBUG: Failed to load model: {e}")
+        else:
+             print(f"DEBUG: Model file not found at {MODEL_PATH}")
 
 def load_cnn():
     global cnn_model
