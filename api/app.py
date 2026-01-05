@@ -117,7 +117,9 @@ def predict():
         if cnn_model:
             # Ensemble Strategy: 40% Lexical + 60% CNN
             # Note: CNN predict returns raw probability 0-1
-            prob_cnn = float(cnn_model.predict(url)[0])
+            # We wrap [url] in a list to ensure the tokenizer treats it as a single sample,
+            # even though CharCNN.predict handles strings internally (safety in depth).
+            prob_cnn = float(cnn_model.predict([url])[0])
             # Lexical proba[1] is the phishing probability
             prob_lex = float(proba[1])
             
