@@ -53,7 +53,8 @@ python -m venv venv
 ### 3. Install Dependencies
 
 ```bash
-pip install -r requirements.txt
+```bash
+pip install -r api/requirements.txt
 ```
 
 ## Dataset

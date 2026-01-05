@@ -56,7 +56,7 @@ def get_hostname(u):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('dataset', help="Path to dataset2.csv")
+    parser.add_argument('dataset', help="Path to dataset.csv")
     parser.add_argument('--lexical-model', default="ml/runs/xgb_calibrated/model.pkl")
     parser.add_argument('--cnn-model', default="ml/runs/char_cnn")
     args = parser.parse_args()
