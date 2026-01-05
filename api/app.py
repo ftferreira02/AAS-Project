@@ -5,9 +5,8 @@ import sys
 import os
 import pandas as pd
 
-MODEL_PATH = os.environ.get(
     "MODEL_PATH",
-    os.path.join(os.path.dirname(__file__), "..", "ml", "model.pkl")
+    os.path.join(os.path.dirname(__file__), "..", "ml", "runs", "xgb_calibrated", "model.pkl")
 )
 CNN_PATH = os.path.join(os.path.dirname(__file__), "..", "ml", "runs", "char_cnn")
 model = None
@@ -45,6 +44,12 @@ def load_model():
 
 def load_cnn():
     global cnn_model
+    # Check if CNN is enabled via environment variable (default: True)
+    if os.environ.get("ENABLE_CNN", "true").lower() != "true":
+        print("CNN disabled via configuration.")
+        cnn_model = None
+        return
+
     if cnn_model is None and CharCNN and os.path.exists(CNN_PATH):
         try:
             print(f"Loading CNN from {CNN_PATH}...")

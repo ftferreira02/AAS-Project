@@ -9,7 +9,7 @@ from sklearn.model_selection import GroupShuffleSplit
 from sklearn.metrics import classification_report, accuracy_score, confusion_matrix
 from features import FeatureExtractor
 from tqdm import tqdm
-from xgboost import XGBClassifier
+
 
 # Imports for CharCNN
 try:
@@ -57,7 +57,7 @@ def get_hostname(u):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('dataset', help="Path to dataset2.csv")
-    parser.add_argument('--lexical-model', default="ml/model.pkl")
+    parser.add_argument('--lexical-model', default="ml/runs/xgb_calibrated/model.pkl")
     parser.add_argument('--cnn-model', default="ml/runs/char_cnn")
     args = parser.parse_args()
 

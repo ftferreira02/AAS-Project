@@ -77,9 +77,17 @@ To retrain the complete Hybrid Ensemble (Lexical + CNN):
 make train
 
 # Or manually:
-python ml/train.py ml/data/dataset2.csv --model xgb_calibrated
-python ml/train.py ml/data/dataset2.csv --model char_cnn
+python ml/train.py ml/data/dataset.csv --model xgb_calibrated
+python ml/train.py ml/data/dataset.csv --model char_cnn
 ```
+
+**Available Models:**
+*   `rf`: Random Forest (Standard)
+*   `xgb`: XGBoost (High Detection)
+*   `logreg`: Logistic Regression (Baseline)
+*   `rf_calibrated`: Random Forest with Probability Calibration
+*   `xgb_calibrated`: XGBoost with Probability Calibration (Recommended Lexical)
+*   `char_cnn`: Character-Level CNN (Recommended Visual)
 
 ### 2. Run the API (Backend)
 
@@ -112,6 +120,13 @@ The following table summarizes the performance of our best model (**Hybrid Ensem
   * **Extremely Safe**: We achieved a **False Positive count of only 2** (out of ~58,000 safe sites).
   * **High Detection**: The system caught **96.00%** of all phishing attacks (Recall).
   * **Efficiency**: The ensemble allows for real-time inference suitable for browser navigation.
+
+### Model Selection Rationale
+
+We experimented with Random Forest, XGBoost, and Logistic Regression.
+*   **Why XGBoost?**: It outperformed Random Forest in reducing False Positives (sites wrongly flagged as phishing).
+*   **Why Calibration?**: Raw models were too aggressive. Calibrated probabilities (`isotonic`) ensured that a "60% confidence" score truly meant a 60% risk, allowing for a safer "Warning" threshold.
+*   **Why Hybrid?**: The **Char-CNN** catches "visual spoofing" (e.g., `g0ogle.com`) that lexical models miss. Combined, they offer the best balance of safety and security.
 
 ## License
 

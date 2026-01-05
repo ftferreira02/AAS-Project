@@ -1,5 +1,5 @@
 import pandas as pd
-import numpy as np
+
 import pickle
 import argparse
 import os
@@ -9,7 +9,7 @@ from datetime import datetime
 # Models
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.calibration import CalibratedClassifierCV
-from sklearn.model_selection import train_test_split, GroupShuffleSplit
+from sklearn.model_selection import GroupShuffleSplit
 from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
@@ -20,7 +20,6 @@ except ImportError:
     CharCNN = None
 
 # Evaluation
-from sklearn.model_selection import GroupShuffleSplit
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 from features import FeatureExtractor
 from tqdm import tqdm
