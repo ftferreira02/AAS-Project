@@ -146,8 +146,8 @@ We experimented with Random Forest, XGBoost, and Logistic Regression.
 *   **Why XGBoost?**: It outperformed Random Forest in reducing False Positives (sites wrongly flagged as phishing).
 ### 2. Probabilistic Decision Policy
 Instead of a binary Safe/Unsafe check, we use a calibrated probability system:
-*   **Safe (< 45%)**: Allow access (Badges Green).
-*   **Warning (45% - 85%)**: Show warning UI, allow proceed (Badge Orange).
+*   **Safe (< 60%)**: Allow access (Badges Green).
+*   **Warning (60% - 85%)**: Show warning UI, allow proceed (Badge Orange).
 *   **Unsafe (> 85%)**: Block access immediately (Badge Red).
 *   **Why Calibration?**: Raw models were too aggressive. Calibrated probabilities (`isotonic`) ensured that a "60% confidence" score truly meant a 60% risk, allowing for a safer "Warning" threshold.
 *   **Why Hybrid?**: The **Char-CNN** catches "visual spoofing" (e.g., `g0ogle.com`) that lexical models miss. Combined, they offer the best balance of safety and security.

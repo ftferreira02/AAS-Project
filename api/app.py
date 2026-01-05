@@ -5,6 +5,7 @@ import sys
 import os
 import pandas as pd
 
+MODEL_PATH = os.environ.get(
     "MODEL_PATH",
     os.path.join(os.path.dirname(__file__), "..", "ml", "runs", "xgb_calibrated", "model.pkl")
 )
@@ -130,20 +131,20 @@ def predict():
         
         # Decision Policy (3-Level) - Tuned for High Recall (Jan 2026)
         # -------------------------------------------------------------------------
-        # WHY 0.45?
+        # WHY 0.60?
         # - Phishing sites often score in the 0.50-0.60 range (ambiguous).
         # - Safe sites almost ALWAYS score < 0.10.
-        # - Lowering to 0.45 caught +47 phishing attacks while only adding 1 false alarm.
+        # - Lowering to 0.60 caught +47 phishing attacks while only adding 1 false alarm.
         #
         # WHY 0.85?
         # - Above 0.85, the model is "certain". We block these.
-        # - Between 0.45 and 0.85 is the "Warning Zone" (Suspicious but not certain).
+        # - Between 0.60 and 0.85 is the "Warning Zone" (Suspicious but not certain).
         # -------------------------------------------------------------------------
-        # Safe:    prob < 0.45
-        # Warning: 0.45 <= prob < 0.85
+        # Safe:    prob < 0.60
+        # Warning: 0.60 <= prob < 0.85
         # Unsafe:  prob >= 0.85
         
-        if phishing_prob < 0.45:
+        if phishing_prob < 0.60:
             level = "safe"
             is_phishing = False
         elif phishing_prob < 0.85:
