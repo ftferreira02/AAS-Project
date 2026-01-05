@@ -15,14 +15,12 @@ This document compares the performance of 5 different model configurations for P
 
 | Model | Accuracy | False Positives (Lower is Better) | False Negatives (Lower is Better) | Phishing Recall | Precision (Class 1) |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Random Forest** | 99.48% | 91 | 364 | 98.18% | 99.54% |
-| **XGBoost (Raw)** | **99.55%** | 135 | **258** | **98.71%** | 99.32% |
-| **Logistic Regression** | 99.32% | 273 | 320 | 98.40% | 98.63% |
-| **RF Calibrated** | 99.35% | 48 | 525 | 97.37% | 99.75% |
-| **XGB Calibrated** | 99.24% | 36 | 634 | 96.83% | 99.81% |
-| **Hybrid (RF+CNN)** | **99.27%** | 11 | **631** | **96.84%** | 99.94% |
-| **Hybrid (Normalized)** | 99.25% | 9 | 652 | 96.74% | 99.95% |
-| **Hybrid (Final Tuned 0.60)** | **98.96%** | **2** | 812 | 96.00% | **99.99%** |
+| **Random Forest** | 99.46% | 83 | 341 | 98.32% | 99.59% |
+| **XGBoost (Raw)** | **99.55%** | 105 | **244** | **98.80%** | 99.48% |
+| **RF Calibrated** | 99.34% | 20 | 497 | 97.55% | 99.90% |
+| **XGB Calibrated** | 99.33% | 9 | 518 | 97.45% | 99.95% |
+| **Hybrid (RF+CNN)** | 99.20% | 37 | 601 | 97.04% | 99.81% |
+| **Hybrid (Final Tuned 0.60)** | 98.78% | **2** | 951 | 95.32% | **99.99%** |
 
 ---
 

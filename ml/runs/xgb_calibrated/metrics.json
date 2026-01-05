@@ -1,6 +1,6 @@
 {
   "model": "xgb_calibrated",
-  "timestamp_utc": "2026-01-05T16:12:25.184060Z",
+  "timestamp_utc": "2026-01-05T16:35:29.085324Z",
   "train_samples": 371958,
   "test_samples": 78214,
   "accuracy": 0.9932620758431995,

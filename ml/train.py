@@ -276,6 +276,9 @@ if __name__ == "__main__":
     
     # Remove rows where hostname could not be parsed (worst results but needed)
     df = df[df["hostname"] != ""].reset_index(drop=True)
+
+    # Ensure deterministic order regardless of file read order
+    df = df.sort_values("url").reset_index(drop=True)
     
     gss = GroupShuffleSplit(n_splits=1, test_size=0.2, random_state=42)
     train_idx, test_idx = next(gss.split(df, y=df["label"], groups=df["hostname"]))
