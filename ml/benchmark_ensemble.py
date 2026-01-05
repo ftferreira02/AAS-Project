@@ -134,7 +134,7 @@ def main():
     # For standard metrics (Accuracy/F1), we usually use 0.5 cutoff.
     # But let's seeing how many fall into "Warning" vs "Unsafe".
     
-    y_pred = (prob_ensemble >= 0.5).astype(int)
+    y_pred = (prob_ensemble >= 0.45).astype(int)
 
     # 5. Report
     print("\n--- Hybrid Ensemble Performance ---")

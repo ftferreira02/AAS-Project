@@ -22,7 +22,7 @@ This document compares the performance of 5 different model configurations for P
 | **XGB Calibrated** | 99.24% | 36 | 634 | 96.83% | 99.81% |
 | **Hybrid (RF+CNN)** | **99.27%** | 11 | **631** | **96.84%** | 99.94% |
 | **Hybrid (Normalized)** | 99.25% | 9 | 652 | 96.74% | 99.95% |
-| **Hybrid (Final Cleaned)** | **98.90%** | **1** | 859 | 95.77% | **99.99%** |
+| **Hybrid (Final Tuned 0.45)** | **98.96%** | **2** | 812 | 96.00% | **99.99%** |
 
 ---
 

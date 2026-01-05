@@ -99,6 +99,24 @@ make run
 python api/app.py
 ```
 
+### 3. Advanced Configuration (Optional)
+
+You can customize the API behavior by setting environment variables **in your terminal** before running the app.
+
+**Option A: Disable the Neural Network (Lexical Only)**
+Use this if you want faster performance (at the cost of some detection power).
+```bash
+# Set the flag before the command:
+ENABLE_CNN=false make run
+```
+
+**Option B: Use a Different Model**
+If you want to test the Random Forest or Logistic Regression models instead of the default XGBoost:
+```bash
+# Point to the specific model file:
+MODEL_PATH=ml/runs/rf/model.pkl make run
+```
+
 ### 3. Browser Extension
 
 1.  Navigate to `chrome://extensions` in Chromium/Chrome.
@@ -125,6 +143,11 @@ The following table summarizes the performance of our best model (**Hybrid Ensem
 
 We experimented with Random Forest, XGBoost, and Logistic Regression.
 *   **Why XGBoost?**: It outperformed Random Forest in reducing False Positives (sites wrongly flagged as phishing).
+### 2. Probabilistic Decision Policy
+Instead of a binary Safe/Unsafe check, we use a calibrated probability system:
+*   **Safe (< 45%)**: Allow access (Badges Green).
+*   **Warning (45% - 85%)**: Show warning UI, allow proceed (Badge Orange).
+*   **Unsafe (> 85%)**: Block access immediately (Badge Red).
 *   **Why Calibration?**: Raw models were too aggressive. Calibrated probabilities (`isotonic`) ensured that a "60% confidence" score truly meant a 60% risk, allowing for a safer "Warning" threshold.
 *   **Why Hybrid?**: The **Char-CNN** catches "visual spoofing" (e.g., `g0ogle.com`) that lexical models miss. Combined, they offer the best balance of safety and security.
 
