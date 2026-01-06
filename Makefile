@@ -10,8 +10,8 @@ setup:
 install:
 	$(PIP) install -r api/requirements.txt
 
-# Train both models (Hybrid Ensemble)
-train: train-lexical train-cnn
+# Train xgb_calibrated model (Lexical Only)
+train: train-lexical
 
 train-lexical:
 	$(PYTHON) ml/train.py $(DATASET) --model xgb_calibrated
@@ -33,4 +33,4 @@ benchmark:
 
 # Clean artifacts
 clean:
-	rm -rf venv ml/__pycache__ api/__pycache__ ml/runs/xgb_calibrated ml/runs/char_cnn ml/data/*cache.csv
+	rm -rf venv ml/__pycache__ api/__pycache__ ml/data/*cache.csv
