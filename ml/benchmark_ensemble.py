@@ -88,12 +88,6 @@ def main():
     cnn.load(args.cnn_model)
 
     # 3. Get Lexical Predictions
-    # We need to extract features for the test set again (or load from cache if we want to be fancy, but let's just extract to be safe/simple for now)
-    # Actually, to save time, let's try to load the cache if it exists, matching the validation logic in train.py
-    # But for a benchmark script, caching logic duplication is annoying. 
-    # Let's inspect if `ml/data/features_test_cache.csv` aligns with our `df_test`.
-    # train.py saves it. If we use the same split logic, it should align.
-    
     cache_path = "ml/data/features_test_cache.csv"
     X_test_lex = None
     
@@ -131,11 +125,6 @@ def main():
     # 4. Ensemble
     print("Calculating Ensemble Scores (0.4 Lex + 0.6 CNN)...")
     prob_ensemble = (0.4 * prob_lex) + (0.6 * prob_cnn)
-    
-    # Threshold at 0.5 for binary metric calculation? 
-    # Or should we respect our 3-level policy?
-    # For standard metrics (Accuracy/F1), we usually use 0.5 cutoff.
-    # But let's seeing how many fall into "Warning" vs "Unsafe".
     
     y_pred = (prob_ensemble >= 0.60).astype(int)
 
