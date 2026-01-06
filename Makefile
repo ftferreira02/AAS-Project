@@ -19,8 +19,12 @@ train-lexical:
 train-cnn:
 	$(PYTHON) ml/train.py $(DATASET) --model char_cnn
 
-# Run the API
+# Run the API (Lexical Only by default for speed)
 run:
+	ENABLE_CNN=false $(PYTHON) api/app.py
+
+# Run the API with Hybrid Model (Lexical + CNN)
+run-hybrid:
 	$(PYTHON) api/app.py
 
 # Run the Benchmark
