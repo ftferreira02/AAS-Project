@@ -17,9 +17,9 @@ This approach balances **high detection rates** (Recall) with **extremely low fa
 * Francisco Ferreira 124467
 * Sara Almeida 108796
 
-## Prerequisities
+## Prerequisites
 
-* Python 3.12 or higher
+* Python 3.10+ (Required for TensorFlow 2.16 compatibility)
 * Pip (Python Package Installer)
 * Make (Optional, for simplified commands)
 
