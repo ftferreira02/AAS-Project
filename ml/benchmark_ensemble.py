@@ -4,6 +4,8 @@ import pickle
 import os
 import argparse
 import sys
+import json
+from datetime import datetime
 from urllib.parse import urlsplit
 from sklearn.model_selection import GroupShuffleSplit
 from sklearn.metrics import classification_report, accuracy_score, confusion_matrix
@@ -59,6 +61,7 @@ def main():
     parser.add_argument('dataset', help="Path to dataset.csv")
     parser.add_argument('--lexical-model', default="ml/runs/xgb_calibrated/model.pkl")
     parser.add_argument('--cnn-model', default="ml/runs/char_cnn")
+    parser.add_argument('--metrics-out', default="ml/runs/hybrid/metrics.json", help="Path to save metrics JSON")
     args = parser.parse_args()
 
     # 1. Recreate the Split
@@ -141,11 +144,51 @@ def main():
     print(classification_report(y_test, y_pred))
     
     tn, fp, fn, tp = confusion_matrix(y_test, y_pred).ravel()
-    print(f"True Negatives: {tn}")
-    print(f"False Positives: {fp}")
-    print(f"False Negatives: {fn}")
     print(f"True Positives: {tp}")
     print(f"Accuracy: {accuracy_score(y_test, y_pred):.4f}")
+
+    # Calculate metrics for JSON
+    report_dict = classification_report(y_test, y_pred, output_dict=True)
+    metrics = {
+        "model": "hybrid_ensemble",
+        "timestamp_utc": datetime.utcnow().isoformat() + "Z",
+        "test_samples": int(len(y_test)),
+        "accuracy": float(accuracy_score(y_test, y_pred)),
+        "per_class": {
+            "0": {
+                "precision": float(report_dict["0"]["precision"]),
+                "recall": float(report_dict["0"]["recall"]),
+                "f1": float(report_dict["0"]["f1-score"]),
+                "support": int(report_dict["0"]["support"]),
+            },
+            "1": {
+                "precision": float(report_dict["1"]["precision"]),
+                "recall": float(report_dict["1"]["recall"]),
+                "f1": float(report_dict["1"]["f1-score"]),
+                "support": int(report_dict["1"]["support"]),
+            },
+        },
+        "macro_avg": {
+            "precision": float(report_dict["macro avg"]["precision"]),
+            "recall": float(report_dict["macro avg"]["recall"]),
+            "f1": float(report_dict["macro avg"]["f1-score"]),
+            "support": int(report_dict["macro avg"]["support"]),
+        },
+        "weighted_avg": {
+            "precision": float(report_dict["weighted avg"]["precision"]),
+            "recall": float(report_dict["weighted avg"]["recall"]),
+            "f1": float(report_dict["weighted avg"]["f1-score"]),
+            "support": int(report_dict["weighted avg"]["support"]),
+        },
+        "confusion_matrix": {"tn": int(tn), "fp": int(fp), "fn": int(fn), "tp": int(tp)},
+    }
+    
+    # Save Metrics
+    if args.metrics_out:
+        os.makedirs(os.path.dirname(args.metrics_out), exist_ok=True)
+        with open(args.metrics_out, "w", encoding="utf-8") as f:
+            json.dump(metrics, f, indent=2)
+        print(f"\nMetrics saved to {args.metrics_out}")
 
     # Analysis of False Positives
     print("\n--- FALSE POSITIVES (Safe sites marked as Phishing) ---")

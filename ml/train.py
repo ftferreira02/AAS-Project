@@ -312,6 +312,48 @@ if __name__ == "__main__":
         os.makedirs(run_dir, exist_ok=True)
         cnn.save(run_dir)
         print(f"Char-CNN saved to {run_dir}")
+
+        # Calculate Metrics
+        acc = accuracy_score(y_test, y_pred)
+        tn, fp, fn, tp = confusion_matrix(y_test, y_pred).ravel()
+        report_dict = classification_report(y_test, y_pred, output_dict=True)
+        
+        metrics = {
+            "model": "char_cnn",
+            "timestamp_utc": datetime.utcnow().isoformat() + "Z",
+            "train_samples": int(len(y_train)),
+            "test_samples": int(len(y_test)),
+            "accuracy": float(acc),
+            "per_class": {
+                "0": {
+                    "precision": float(report_dict["0"]["precision"]),
+                    "recall": float(report_dict["0"]["recall"]),
+                    "f1": float(report_dict["0"]["f1-score"]),
+                    "support": int(report_dict["0"]["support"]),
+                },
+                "1": {
+                    "precision": float(report_dict["1"]["precision"]),
+                    "recall": float(report_dict["1"]["recall"]),
+                    "f1": float(report_dict["1"]["f1-score"]),
+                    "support": int(report_dict["1"]["support"]),
+                },
+            },
+            "macro_avg": {
+                "precision": float(report_dict["macro avg"]["precision"]),
+                "recall": float(report_dict["macro avg"]["recall"]),
+                "f1": float(report_dict["macro avg"]["f1-score"]),
+                "support": int(report_dict["macro avg"]["support"]),
+            },
+            "weighted_avg": {
+                "precision": float(report_dict["weighted avg"]["precision"]),
+                "recall": float(report_dict["weighted avg"]["recall"]),
+                "f1": float(report_dict["weighted avg"]["f1-score"]),
+                "support": int(report_dict["weighted avg"]["support"]),
+            },
+            "confusion_matrix": {"tn": int(tn), "fp": int(fp), "fn": int(fn), "tp": int(tp)},
+        }
+
+        save_metrics(metrics, os.path.join(run_dir, "metrics.json"))
         exit(0)
 
     X_train, y_train = extract_features_from_df(df_train, cache_path="ml/data/features_train_cache.csv")
