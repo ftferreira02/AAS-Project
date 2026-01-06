@@ -137,8 +137,9 @@ def build_model(model_name: str):
             n_estimators=150, 
             learning_rate=0.1, 
             max_depth=10, 
-            use_label_encoder=False, 
+            # use_label_encoder=False,  # Deprecated in newer XGBoost
             eval_metric='logloss',
+            objective='binary:logistic', # Explicitly set objective
             scale_pos_weight=3, # Fix class imbalance (approx 3:1 ratio)
             random_state=42,
             n_jobs=-1
@@ -164,8 +165,9 @@ def build_model(model_name: str):
             n_estimators=150, 
             learning_rate=0.1, 
             max_depth=10, 
-            use_label_encoder=False, 
+            # use_label_encoder=False, # Deprecated
             eval_metric='logloss',
+            objective='binary:logistic', # Explicitly set objective
             scale_pos_weight=3, # Fix class imbalance
             random_state=42,
             n_jobs=-1
