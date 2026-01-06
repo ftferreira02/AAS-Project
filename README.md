@@ -10,8 +10,8 @@ This repository contains the source code for the Practical Project of the **Apre
 The objective of this project is to **classify URLs as benign or phishing using only the URL string** (lexical analysis), without fetching page content. We compare several lightweight classical ML models trained on engineered URL features (LogReg, RF, XGBoost and calibrated variants), and include a **character-level CNN baseline** and an **optional hybrid ensemble** for comparison.
 
 **Authors:**
-* Francisco Ferreira 124467
-* Sara Almeida 108796
+* Francisco Ferreira 124467 (50%)
+* Sara Almeida 108796 (50%)
 
 ## Prerequisites
 
