@@ -1,4 +1,4 @@
-# Hybrid Ensemble Phishing URL Detection
+# Phishing URL Detection
 
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
 ![Python](https://img.shields.io/badge/Python-3.12%2B-blue)
@@ -7,11 +7,7 @@
 
 This repository contains the source code for the Practical Project of the **Aprendizagem Aplicada à Segurança (AAS)** course.
 
-The objective of this project is to **detect phishing URLs in real-time** using a **Hybrid Ensemble Model** that combines:
-1.  **Lexical Analysis**: An XGBoost classifier trained on 20+ extracted features (entropy, dot counts, keyword presence).
-2.  **Visual Pattern Analysis**: A Character-Level Convolutional Neural Network (Char-CNN) that learns suspicious string patterns.
-
-This approach balances **high detection rates** (Recall) with **extremely low false positives** (Safety), making it suitable for a user-facing browser extension.
+The objective of this project is to **classify URLs as benign or phishing using only the URL string** (lexical analysis), without fetching page content. We compare several lightweight classical ML models trained on engineered URL features (LogReg, RF, XGBoost and calibrated variants), and include a **character-level CNN baseline** and an **optional hybrid ensemble** for comparison.
 
 **Authors:**
 * Francisco Ferreira 124467
@@ -19,7 +15,7 @@ This approach balances **high detection rates** (Recall) with **extremely low fa
 
 ## Prerequisites
 
-* Python 3.10+ (Required for TensorFlow 2.16 compatibility)
+* Python 3.12+ (Required for TensorFlow 2.16 compatibility)
 * Pip (Python Package Installer)
 * Make (Optional, for simplified commands)
 
@@ -59,19 +55,19 @@ pip install -r api/requirements.txt
 
 ## Dataset
 
-## Dataset
-
-This project utilizes the **Malicious and Benign URLs** dataset from Kaggle.
+This project utilizes the **Malicious and Benign URLs** dataset from Kaggle. 
 
 *   **Source:** [Malicious and Benign URLs Dataset](https://www.kaggle.com/datasets/siddharthkumar25/malicious-and-benign-urls)
 *   **Setup:** Download the dataset and place the `dataset.csv` file in the `ml/data/` folder.
 *   **Preprocessing:** The project automatically handles feature extraction and caching upon the first run.
 
+The dataset contains 450,176 labelled URLs, with 345,738 benign (76.8\%) and 104,438 malicious (23.2\%) samples. The report experiments were conducted with hostname-grouped test set of 78,214 samples.
+
 ## Usage
 
 ### 1. Train the Model
 
-To retrain the complete Hybrid Ensemble (Lexical + CNN):
+To retrain the lexical model:
 
 ```bash
 # Using Makefile (Recommended)
@@ -79,16 +75,38 @@ make train
 
 # Or manually:
 python ml/train.py ml/data/dataset.csv --model xgb_calibrated
-python ml/train.py ml/data/dataset.csv --model char_cnn
 ```
 
-**Available Models:**
-*   `rf`: Random Forest (Standard)
-*   `xgb`: XGBoost (High Detection)
-*   `logreg`: Logistic Regression (Baseline)
+**Available Models and how to run them:**
+*   `rf`: Random Forest
+```bash
+python ml/train.py ml/data/dataset.csv --model rf
+```
+*   `xgb`: XGBoost
+```bash
+python ml/train.py ml/data/dataset.csv --model xgb
+```
+*   `logreg`: Logistic Regression 
+```bash
+python ml/train.py ml/data/dataset.csv --model logreg
+```
 *   `rf_calibrated`: Random Forest with Probability Calibration
+```bash
+python ml/train.py ml/data/dataset.csv --model rf_calibrated
+```
 *   `xgb_calibrated`: XGBoost with Probability Calibration (Recommended Lexical)
+```bash
+python ml/train.py ml/data/dataset.csv --model xgb_calibrated
+```
 *   `char_cnn`: Character-Level CNN (Recommended Visual)
+```bash
+python ml/train.py ml/data/dataset.csv --model char-cnn
+```
+*  Hybrid Emsemble (Lexical XGB Calibrated + Char-CNN) - Combine both models.
+```bash
+python ml/train.py ml/data/dataset.csv --model xgb_calibrated
+python ml/train.py ml/data/dataset.csv --model char_cnn
+```
 
 ### 2. Run the API (Backend)
 
@@ -98,6 +116,18 @@ Start the Flask API to serve predictions:
 make run
 # or
 python api/app.py
+```
+
+The API exposes:
+- `GET /health`
+- `POST /predict` (expects a JSON payload containing a URL and returns a score + risk tier)
+
+Example request:
+
+```bash
+curl -X POST http://127.0.0.1:5000/predict \
+  -H "Content-Type: application/json" \
+  -d '{"url":"https://example.com/login"}'
 ```
 
 ### 3. Advanced Configuration (Optional)
@@ -124,34 +154,36 @@ MODEL_PATH=ml/runs/rf/model.pkl make run
 2.  Enable **Developer Mode**.
 3.  Click **Load Unpacked** and select the `extension/` directory.
 
+
 ## Major Results
 
-The following table summarizes the performance of our best model (**Hybrid Ensemble - Tuned**) on the test set (~78,000 URLs).
+All results below are reported on the **hostname-grouped test set** using a **0.5 threshold** for fair comparison across models.
 
-| Class | Precision | Recall | F1-Score | Support |
-| :--- | :---: | :---: | :---: | :---: |
-| **Benign** | 0.99 | 1.00 | 0.99 | 57,898 |
-| **Phishing** | 1.00 | 0.96 | 0.98 | 20,316 |
-| **Accuracy** | | | **0.9896** | 78,214 |
+### Best deployed model (lexical-only): `XGB_calibrated`
 
-**Key Findings:**
+- Accuracy: **0.9873**
+- Phishing precision (class 1): **0.9999**
+- Phishing recall (class 1): **0.9512**
+- Phishing F1 (class 1): **0.9750**
+- Confusion matrix: **TN=57897, FP=1, FN=992, TP=19324**
 
-  * **Extremely Safe**: We achieved a **False Positive count of only 2** (out of ~58,000 safe sites).
-  * **High Detection**: The system caught **96.00%** of all phishing attacks (Recall).
-  * **Efficiency**: The ensemble allows for real-time inference suitable for browser navigation.
+### Deep learning baseline (Char-CNN, comparison only)
 
-### Model Selection Rationale
+- Accuracy: **0.9971**
+- Confusion matrix: **TN=57814, FP=84, FN=143, TP=20173**
 
-We experimented with Random Forest, XGBoost, and Logistic Regression.
-*   **Why XGBoost?**: It outperformed Random Forest in reducing False Positives (sites wrongly flagged as phishing).
-### 2. Probabilistic Decision Policy
-Instead of a binary Safe/Unsafe check, we use a calibrated probability system:
-*   **Safe (< 60%)**: Allow access (Badges Green).
-*   **Warning (60% - 85%)**: Show warning UI, allow proceed (Badge Orange).
-*   **Unsafe (> 85%)**: Block access immediately (Badge Red).
-*   **Why Calibration?**: Raw models were too aggressive. Calibrated probabilities (`isotonic`) ensured that a "60% confidence" score truly meant a 60% risk, allowing for a safer "Warning" threshold.
-*   **Why Hybrid?**: The **Char-CNN** catches "visual spoofing" (e.g., `g0ogle.com`) that lexical models miss. Combined, they offer the best balance of safety and security.
+### Hybrid ensemble (0.4 lexical + 0.6 Char-CNN, comparison only)
 
+- Accuracy: **0.9959**
+- Confusion matrix: **TN=57885, FP=13, FN=311, TP=20005**
+
+### Key findings
+
+- Calibrated XGBoost yields an extremely low **false positive** count at threshold 0.5 (FP=1), which is desirable for user-facing warning/blocking actions.
+- Char-CNN and the hybrid approach show strong classification performance, but introduce heavier runtime dependencies and operational complexity.
+- The deployed extension uses a three-level policy (SAFE/WARNING/UNSAFE) with stricter thresholds than 0.5 to reduce disruption.
+
+---
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
