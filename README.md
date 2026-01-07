@@ -39,6 +39,13 @@ python3 -m venv venv
 source venv/bin/activate
 ```
 
+OR 
+
+```bash
+make clean
+make setup
+```
+
 **Windows (PowerShell):**
 
 ```powershell
@@ -49,8 +56,13 @@ python -m venv venv
 ### 3. Install Dependencies
 
 ```bash
-```bash
 pip install -r api/requirements.txt
+```
+
+OR 
+
+```bash
+make install
 ```
 
 ## Dataset
